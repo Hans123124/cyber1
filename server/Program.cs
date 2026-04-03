@@ -1,4 +1,5 @@
 using CyberServer.Data;
+using CyberServer.Domain;
 using CyberServer.Hubs;
 using CyberServer.Middleware;
 using CyberServer.Services;
@@ -48,6 +49,35 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+
+    // Seed default club + layout if none exist
+    if (!db.Clubs.Any())
+    {
+        var defaultClub = new Club { Name = "Main Club" };
+        db.Clubs.Add(defaultClub);
+        db.ClubSettings.Add(new ClubSettings { ClubId = defaultClub.Id });
+        db.MapLayouts.Add(new MapLayout { ClubId = defaultClub.Id, Name = "Main Hall" });
+        db.SaveChanges();
+    }
+    else
+    {
+        // Ensure every club has at least one layout
+        var clubsWithoutLayout = db.Clubs
+            .Where(c => !db.MapLayouts.Any(l => l.ClubId == c.Id))
+            .ToList();
+        foreach (var club in clubsWithoutLayout)
+            db.MapLayouts.Add(new MapLayout { ClubId = club.Id, Name = "Main Hall" });
+
+        // Ensure every club has settings
+        var clubsWithoutSettings = db.Clubs
+            .Where(c => !db.ClubSettings.Any(s => s.ClubId == c.Id))
+            .ToList();
+        foreach (var club in clubsWithoutSettings)
+            db.ClubSettings.Add(new ClubSettings { ClubId = club.Id });
+
+        if (clubsWithoutLayout.Count > 0 || clubsWithoutSettings.Count > 0)
+            db.SaveChanges();
+    }
 }
 
 // ── Middleware pipeline ───────────────────────────────────────────────────────
@@ -57,7 +87,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Serve admin web UI from wwwroot (index.html, map.html, etc.)
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
@@ -66,3 +95,4 @@ app.MapControllers();
 app.MapHub<AgentHub>("/hubs/agent");
 
 app.Run();
+
