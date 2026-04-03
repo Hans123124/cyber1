@@ -93,6 +93,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
             b.HasKey(t => t.Id);
             b.Property(t => t.Name).HasMaxLength(128);
             b.Property(t => t.Price).HasPrecision(18, 4);
+            b.Property(t => t.HourlyRateMdl).HasPrecision(18, 4);
+            b.HasOne(t => t.Club)
+             .WithMany()
+             .HasForeignKey(t => t.ClubId)
+             .OnDelete(DeleteBehavior.SetNull);
+            b.HasIndex(t => t.ClubId);
         });
 
         modelBuilder.Entity<Sale>(b =>

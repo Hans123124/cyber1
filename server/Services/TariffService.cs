@@ -7,7 +7,7 @@ namespace CyberServer.Services;
 
 public interface ITariffService
 {
-    Task<IReadOnlyList<TariffPlan>> GetAllAsync(bool includeInactive = false, CancellationToken ct = default);
+    Task<IReadOnlyList<TariffPlan>> GetAllAsync(bool includeInactive = false, Guid? clubId = null, CancellationToken ct = default);
     Task<TariffPlan?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<TariffPlan> CreateAsync(CreateTariffPlanRequest request, CancellationToken ct = default);
     Task<TariffPlan?> UpdateAsync(Guid id, UpdateTariffPlanRequest request, CancellationToken ct = default);
@@ -16,10 +16,11 @@ public interface ITariffService
 
 public class TariffService(AppDbContext db) : ITariffService
 {
-    public async Task<IReadOnlyList<TariffPlan>> GetAllAsync(bool includeInactive = false, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TariffPlan>> GetAllAsync(bool includeInactive = false, Guid? clubId = null, CancellationToken ct = default)
     {
         var q = db.TariffPlans.AsQueryable();
         if (!includeInactive) q = q.Where(t => t.IsActive);
+        if (clubId.HasValue) q = q.Where(t => t.ClubId == clubId.Value || t.ClubId == null);
         return await q.OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToListAsync(ct);
     }
 
@@ -30,8 +31,10 @@ public class TariffService(AppDbContext db) : ITariffService
     {
         var plan = new TariffPlan
         {
+            ClubId = request.ClubId,
             Name = request.Name,
             Type = request.Type,
+            HourlyRateMdl = request.HourlyRateMdl,
             DurationMinutes = request.DurationMinutes,
             DurationDays = request.DurationDays,
             Price = request.Price,
@@ -49,6 +52,7 @@ public class TariffService(AppDbContext db) : ITariffService
         if (plan is null) return null;
 
         if (request.Name is not null) plan.Name = request.Name;
+        if (request.HourlyRateMdl.HasValue) plan.HourlyRateMdl = request.HourlyRateMdl.Value;
         if (request.DurationMinutes.HasValue) plan.DurationMinutes = request.DurationMinutes;
         if (request.DurationDays.HasValue) plan.DurationDays = request.DurationDays;
         if (request.Price.HasValue) plan.Price = request.Price.Value;

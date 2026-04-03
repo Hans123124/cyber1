@@ -174,6 +174,10 @@
   ::-webkit-scrollbar { width:5px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* Modals */
+  [id^="modal-"] { align-items:center; justify-content:center; }
+  [id^="modal-"][style*="flex"] { display:flex !important; }
 </style>
 </head>
 <body>
@@ -309,8 +313,15 @@
       <div class="mgmt-card">
         <h2>Workstations</h2>
         <table class="mgmt-table" id="ws-table">
-          <thead><tr><th>Name</th><th>Status</th><th>IP</th><th>Club</th><th>Last Seen</th></tr></thead>
+          <thead><tr><th>Name</th><th>Status</th><th>IP</th><th>Club</th><th>Last Seen</th><th>Actions</th></tr></thead>
           <tbody id="ws-tbody"></tbody>
+        </table>
+      </div>
+      <div class="mgmt-card">
+        <h2>Active Sessions</h2>
+        <table class="mgmt-table" id="sessions-table">
+          <thead><tr><th>Workstation</th><th>Tariff</th><th>Started</th><th>Ends At</th><th>Amount</th><th>Actions</th></tr></thead>
+          <tbody id="sessions-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -336,6 +347,136 @@
           <tbody id="layouts-tbody"></tbody>
         </table>
       </div>
+      <div class="mgmt-card" id="tariff-plans-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h2 style="margin:0;">Tariff Plans</h2>
+          <button class="save-btn" id="btn-add-tariff" style="width:auto;padding:7px 16px;">+ Add Tariff</button>
+        </div>
+        <table class="mgmt-table" id="tariffs-table">
+          <thead><tr><th>Name</th><th>Type</th><th>Hourly Rate (MDL)</th><th>Active</th><th>Actions</th></tr></thead>
+          <tbody id="tariffs-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Session start modal ── -->
+<div id="modal-start-session" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;width:380px;display:flex;flex-direction:column;gap:14px;">
+    <h3 style="margin:0;font-size:16px;">Start Session</h3>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Workstation</label>
+      <div id="modal-ws-name" style="font-size:14px;font-weight:500;margin-top:2px;"></div>
+    </div>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Tariff Plan</label>
+      <select class="num-input" id="modal-tariff-select" style="margin-top:4px;"></select>
+    </div>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Duration (whole hours)</label>
+      <select class="num-input" id="modal-hours-select" style="margin-top:4px;">
+        <option value="1">1 hour</option>
+        <option value="2">2 hours</option>
+        <option value="3">3 hours</option>
+        <option value="4">4 hours</option>
+        <option value="5">5 hours</option>
+        <option value="6">6 hours</option>
+        <option value="8">8 hours</option>
+        <option value="10">10 hours</option>
+        <option value="12">12 hours</option>
+      </select>
+    </div>
+    <div style="background:var(--panel2);border-radius:8px;padding:10px;font-size:13px;">
+      Total: <strong id="modal-total-price">—</strong> MDL
+    </div>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Payment Method</label>
+      <select class="num-input" id="modal-payment-method" style="margin-top:4px;">
+        <option value="Cash">Cash</option>
+        <option value="Card">Card</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Guest Name (optional)</label>
+      <input type="text" class="num-input" id="modal-guest-name" placeholder="Guest name" style="margin-top:4px;">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="save-btn" style="background:var(--panel2);color:var(--text2);" onclick="closeStartModal()">Cancel</button>
+      <button class="save-btn" id="btn-confirm-start">Start Session</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Session extend modal ── -->
+<div id="modal-extend-session" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;width:380px;display:flex;flex-direction:column;gap:14px;">
+    <h3 style="margin:0;font-size:16px;">Extend Session</h3>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Workstation</label>
+      <div id="extend-ws-name" style="font-size:14px;font-weight:500;margin-top:2px;"></div>
+    </div>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Tariff Plan</label>
+      <select class="num-input" id="extend-tariff-select" style="margin-top:4px;"></select>
+    </div>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Additional Duration (whole hours)</label>
+      <select class="num-input" id="extend-hours-select" style="margin-top:4px;">
+        <option value="1">1 hour</option>
+        <option value="2">2 hours</option>
+        <option value="3">3 hours</option>
+        <option value="4">4 hours</option>
+        <option value="5">5 hours</option>
+        <option value="6">6 hours</option>
+      </select>
+    </div>
+    <div style="background:var(--panel2);border-radius:8px;padding:10px;font-size:13px;">
+      Additional cost: <strong id="extend-total-price">—</strong> MDL
+    </div>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Payment Method</label>
+      <select class="num-input" id="extend-payment-method" style="margin-top:4px;">
+        <option value="Cash">Cash</option>
+        <option value="Card">Card</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="save-btn" style="background:var(--panel2);color:var(--text2);" onclick="closeExtendModal()">Cancel</button>
+      <button class="save-btn" id="btn-confirm-extend">Extend Session</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tariff plan modal ── -->
+<div id="modal-tariff" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;width:360px;display:flex;flex-direction:column;gap:14px;">
+    <h3 id="modal-tariff-title" style="margin:0;font-size:16px;">Add Tariff Plan</h3>
+    <input type="hidden" id="tariff-edit-id">
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Name</label>
+      <input type="text" class="num-input" id="tariff-name" placeholder="e.g. Standard" style="margin-top:4px;">
+    </div>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Type</label>
+      <select class="num-input" id="tariff-type" style="margin-top:4px;">
+        <option value="Hourly">Hourly</option>
+        <option value="Monthly">Monthly</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size:12px;color:var(--text2);">Hourly Rate (MDL)</label>
+      <input type="number" class="num-input" id="tariff-hourly-rate" placeholder="e.g. 15" min="0" step="0.01" style="margin-top:4px;">
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="checkbox" id="tariff-active" checked>
+      <label for="tariff-active" style="font-size:13px;">Active</label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="save-btn" style="background:var(--panel2);color:var(--text2);" onclick="closeTariffModal()">Cancel</button>
+      <button class="save-btn" id="btn-save-tariff">Save</button>
     </div>
   </div>
 </div>
@@ -392,6 +533,9 @@ let state = {
   items: [],
   zones: [],
   workstations: [],
+  tariffPlans: [],
+  activeSessions: [],
+  currentUserRoles: [],
   scale: 1,
   offsetX: 0,
   offsetY: 0,
@@ -400,6 +544,8 @@ let state = {
   drawingZone: false,
   zoneStart: null,
   zoneRect: null,
+  startSessionWsId: null,
+  extendSessionId: null,
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -418,10 +564,33 @@ async function apiFetch(path, opts = {}) {
 // ═══════════════════════════════════════════════════════════
 async function init() {
   buildElementsPalette();
+  await loadCurrentUser();
   await loadClubs();
   await loadWorkstations();
+  await loadTariffPlans();
   setupEventListeners();
   startPolling();
+}
+
+async function loadCurrentUser() {
+  try {
+    const r = await fetch('/api/account/me', { headers: { 'Content-Type': 'application/json' } });
+    if (!r.ok) return;
+    const me = await r.json();
+    state.currentUserRoles = me.roles || [];
+    applyRoleVisibility();
+  } catch(e) { console.warn('Could not load current user:', e); }
+}
+
+function applyRoleVisibility() {
+  const isCashier = state.currentUserRoles.includes('Cashier') &&
+    !state.currentUserRoles.includes('Admin') &&
+    !state.currentUserRoles.includes('SuperAdmin');
+  // Cashier cannot edit tariff plans
+  const addTariffBtn = document.getElementById('btn-add-tariff');
+  if (addTariffBtn) addTariffBtn.style.display = isCashier ? 'none' : '';
+  // Store for later use
+  state._isCashier = isCashier;
 }
 
 function buildElementsPalette() {
@@ -993,14 +1162,169 @@ function renderWorkstationsTable() {
     const label = w.isOnline ? 'Online' : 'Offline';
     const seen = new Date(w.lastSeenAt).toLocaleString();
     const club = w.clubId ? (clubs[w.clubId] || w.clubId) : '—';
+    const hasSession = state.activeSessions.some(s => s.workstationId === w.id);
+    const actionBtn = hasSession
+      ? `<button class="map-btn" style="width:auto;padding:4px 10px;font-size:12px;background:var(--yellow);border-color:var(--yellow);color:#000;" onclick="openExtendModal('${w.id}')">Extend</button>`
+      : `<button class="map-btn" style="width:auto;padding:4px 10px;font-size:12px;" onclick="openStartModal('${w.id}','${w.name}')">Start</button>`;
     return `<tr>
       <td>${w.name}</td>
       <td><span class="status-badge ${badge}">${label}</span></td>
       <td>${w.ipAddress||'—'}</td>
       <td>${club}</td>
       <td>${seen}</td>
+      <td>${actionBtn}</td>
     </tr>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// Sessions
+// ═══════════════════════════════════════════════════════════
+async function loadActiveSessions() {
+  try {
+    const sessions = await apiFetch('/sessions');
+    state.activeSessions = (sessions || []).filter(s => s.status === 'Active');
+    renderSessionsTable();
+  } catch(e) { console.error('Failed to load sessions:', e); }
+}
+
+function renderSessionsTable() {
+  const tbody = document.getElementById('sessions-tbody');
+  if (!tbody) return;
+  const wsMap = Object.fromEntries(state.workstations.map(w => [w.id, w.name]));
+  if (state.activeSessions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:20px;">No active sessions</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.activeSessions.map(s => {
+    const wsName = wsMap[s.workstationId] || s.workstationId;
+    const started = new Date(s.startedAt).toLocaleString();
+    const endsAt = new Date(s.endsAt).toLocaleString();
+    return `<tr>
+      <td>${wsName}</td>
+      <td>${s.tariffPlanName}</td>
+      <td>${started}</td>
+      <td>${endsAt}</td>
+      <td>—</td>
+      <td>
+        <button class="map-btn" style="width:auto;padding:4px 10px;font-size:12px;background:var(--yellow);border-color:var(--yellow);color:#000;" onclick="openExtendModalBySession('${s.id}','${wsName}')">Extend</button>
+        <button class="map-btn" style="width:auto;padding:4px 10px;font-size:12px;background:var(--red);border-color:var(--red);color:#fff;margin-left:4px;" onclick="endSession('${s.id}')">End</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Session start modal ───────────────────────────────────
+function openStartModal(wsId, wsName) {
+  if (state.tariffPlans.length === 0) return alert('No tariff plans available. Please create one in Configuration first.');
+  state.startSessionWsId = wsId;
+  document.getElementById('modal-ws-name').textContent = wsName;
+  const sel = document.getElementById('modal-tariff-select');
+  sel.innerHTML = state.tariffPlans.filter(t => t.isActive).map(t =>
+    `<option value="${t.id}" data-rate="${t.hourlyRateMdl}">${t.name} — ${t.hourlyRateMdl} MDL/hr</option>`
+  ).join('');
+  updateStartModalTotal();
+  document.getElementById('modal-guest-name').value = '';
+  document.getElementById('modal-start-session').style.display = 'flex';
+}
+
+function closeStartModal() {
+  document.getElementById('modal-start-session').style.display = 'none';
+}
+
+function updateStartModalTotal() {
+  const sel = document.getElementById('modal-tariff-select');
+  const hours = parseInt(document.getElementById('modal-hours-select').value, 10);
+  const rate = parseFloat(sel.selectedOptions[0]?.dataset.rate || '0');
+  document.getElementById('modal-total-price').textContent = (hours * rate).toFixed(2);
+}
+
+async function confirmStartSession() {
+  const tariffId = document.getElementById('modal-tariff-select').value;
+  const hours = parseInt(document.getElementById('modal-hours-select').value, 10);
+  const method = document.getElementById('modal-payment-method').value;
+  const guest = document.getElementById('modal-guest-name').value.trim();
+  if (!tariffId || !hours) return alert('Please fill in all fields.');
+  try {
+    await apiFetch('/sessions/start', {
+      method: 'POST',
+      body: JSON.stringify({
+        workstationId: state.startSessionWsId,
+        tariffPlanId: tariffId,
+        durationHours: hours,
+        customerId: null,
+        guestName: guest || null,
+        paymentMethod: method === 'Cash' ? 0 : method === 'Card' ? 1 : 2,
+        operatorName: 'admin'
+      })
+    });
+    closeStartModal();
+    showToast('Session started');
+    await loadActiveSessions();
+    renderWorkstationsTable();
+  } catch(e) { alert('Failed to start session: ' + e.message); }
+}
+
+// ── Session extend modal ──────────────────────────────────
+function openExtendModal(wsId) {
+  const session = state.activeSessions.find(s => s.workstationId === wsId);
+  if (!session) return alert('No active session for this workstation.');
+  openExtendModalBySession(session.id, state.workstations.find(w => w.id === wsId)?.name || wsId);
+}
+
+function openExtendModalBySession(sessionId, wsName) {
+  if (state.tariffPlans.length === 0) return alert('No tariff plans available.');
+  state.extendSessionId = sessionId;
+  document.getElementById('extend-ws-name').textContent = wsName;
+  const sel = document.getElementById('extend-tariff-select');
+  sel.innerHTML = state.tariffPlans.filter(t => t.isActive).map(t =>
+    `<option value="${t.id}" data-rate="${t.hourlyRateMdl}">${t.name} — ${t.hourlyRateMdl} MDL/hr</option>`
+  ).join('');
+  updateExtendModalTotal();
+  document.getElementById('modal-extend-session').style.display = 'flex';
+}
+
+function closeExtendModal() {
+  document.getElementById('modal-extend-session').style.display = 'none';
+}
+
+function updateExtendModalTotal() {
+  const sel = document.getElementById('extend-tariff-select');
+  const hours = parseInt(document.getElementById('extend-hours-select').value, 10);
+  const rate = parseFloat(sel.selectedOptions[0]?.dataset.rate || '0');
+  document.getElementById('extend-total-price').textContent = (hours * rate).toFixed(2);
+}
+
+async function confirmExtendSession() {
+  const tariffId = document.getElementById('extend-tariff-select').value;
+  const hours = parseInt(document.getElementById('extend-hours-select').value, 10);
+  const method = document.getElementById('extend-payment-method').value;
+  if (!tariffId || !hours) return alert('Please fill in all fields.');
+  try {
+    await apiFetch(`/sessions/${state.extendSessionId}/extend`, {
+      method: 'POST',
+      body: JSON.stringify({
+        tariffPlanId: tariffId,
+        durationHours: hours,
+        paymentMethod: method === 'Cash' ? 0 : method === 'Card' ? 1 : 2,
+        operatorName: 'admin'
+      })
+    });
+    closeExtendModal();
+    showToast('Session extended');
+    await loadActiveSessions();
+    renderWorkstationsTable();
+  } catch(e) { alert('Failed to extend session: ' + e.message); }
+}
+
+async function endSession(sessionId) {
+  if (!confirm('End this session?')) return;
+  try {
+    await apiFetch(`/sessions/${sessionId}/end`, { method: 'POST', body: JSON.stringify({ reboot: false }) });
+    showToast('Session ended');
+    await loadActiveSessions();
+    renderWorkstationsTable();
+  } catch(e) { alert('Failed to end session: ' + e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1054,6 +1378,105 @@ async function createClub() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// Tariff Plans
+// ═══════════════════════════════════════════════════════════
+async function loadTariffPlans() {
+  try {
+    state.tariffPlans = await apiFetch('/tariffs?includeInactive=true');
+  } catch(e) { console.error('Failed to load tariff plans:', e); }
+}
+
+function renderTariffPlansTable() {
+  const tbody = document.getElementById('tariffs-tbody');
+  if (!tbody) return;
+  if (state.tariffPlans.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:20px;">No tariff plans yet</td></tr>';
+    return;
+  }
+  const isCashier = state._isCashier;
+  tbody.innerHTML = state.tariffPlans.map(t => {
+    const actions = isCashier ? '' : `
+      <button class="map-btn" style="width:auto;padding:4px 10px;font-size:12px;" onclick="openTariffModal('${t.id}')">Edit</button>
+      <button class="map-btn" style="width:auto;padding:4px 10px;font-size:12px;background:var(--red);border-color:var(--red);color:#fff;margin-left:4px;" onclick="deleteTariff('${t.id}')">Delete</button>
+    `;
+    return `<tr>
+      <td>${t.name}</td>
+      <td>${t.type}</td>
+      <td>${parseFloat(t.hourlyRateMdl).toFixed(2)} MDL/hr</td>
+      <td><span class="status-badge ${t.isActive ? 'badge-online' : 'badge-offline'}">${t.isActive ? 'Active' : 'Inactive'}</span></td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openTariffModal(editId) {
+  const modal = document.getElementById('modal-tariff');
+  document.getElementById('tariff-edit-id').value = editId || '';
+  document.getElementById('modal-tariff-title').textContent = editId ? 'Edit Tariff Plan' : 'Add Tariff Plan';
+  if (editId) {
+    const t = state.tariffPlans.find(p => p.id === editId);
+    if (t) {
+      document.getElementById('tariff-name').value = t.name;
+      document.getElementById('tariff-type').value = t.type;
+      document.getElementById('tariff-hourly-rate').value = t.hourlyRateMdl;
+      document.getElementById('tariff-active').checked = t.isActive;
+    }
+  } else {
+    document.getElementById('tariff-name').value = '';
+    document.getElementById('tariff-type').value = 'Hourly';
+    document.getElementById('tariff-hourly-rate').value = '';
+    document.getElementById('tariff-active').checked = true;
+  }
+  modal.style.display = 'flex';
+}
+
+function closeTariffModal() {
+  document.getElementById('modal-tariff').style.display = 'none';
+}
+
+async function saveTariff() {
+  const editId = document.getElementById('tariff-edit-id').value;
+  const name = document.getElementById('tariff-name').value.trim();
+  const type = document.getElementById('tariff-type').value;
+  const hourlyRate = parseFloat(document.getElementById('tariff-hourly-rate').value);
+  const isActive = document.getElementById('tariff-active').checked;
+
+  if (!name) return alert('Name is required.');
+  if (isNaN(hourlyRate) || hourlyRate < 0) return alert('Hourly rate must be a valid non-negative number.');
+
+  try {
+    if (editId) {
+      const updated = await apiFetch(`/tariffs/${editId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name, hourlyRateMdl: hourlyRate, isActive })
+      });
+      const idx = state.tariffPlans.findIndex(t => t.id === editId);
+      if (idx >= 0) state.tariffPlans[idx] = updated;
+    } else {
+      const created = await apiFetch('/tariffs', {
+        method: 'POST',
+        body: JSON.stringify({ name, type, hourlyRateMdl: hourlyRate, isActive, price: 0 })
+      });
+      state.tariffPlans.push(created);
+    }
+    closeTariffModal();
+    renderTariffPlansTable();
+    showToast(editId ? 'Tariff updated' : 'Tariff created');
+  } catch(e) { alert('Failed: ' + e.message); }
+}
+
+async function deleteTariff(id) {
+  if (!confirm('Deactivate this tariff plan?')) return;
+  try {
+    await apiFetch(`/tariffs/${id}`, { method: 'DELETE' });
+    const t = state.tariffPlans.find(p => p.id === id);
+    if (t) t.isActive = false;
+    renderTariffPlansTable();
+    showToast('Tariff deactivated');
+  } catch(e) { alert('Failed: ' + e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════
 // Tab navigation
 // ═══════════════════════════════════════════════════════════
 function setupTabs() {
@@ -1065,8 +1488,8 @@ function setupTabs() {
       document.getElementById('tab-map').style.display = tab === 'map' ? 'flex' : 'none';
       document.getElementById('tab-management').style.display = tab === 'management' ? 'flex' : 'none';
       document.getElementById('tab-configuration').style.display = tab === 'configuration' ? 'flex' : 'none';
-      if (tab === 'management') renderWorkstationsTable();
-      if (tab === 'configuration') { renderClubsTable(); renderLayoutsTable(); }
+      if (tab === 'management') { renderWorkstationsTable(); renderSessionsTable(); loadActiveSessions(); }
+      if (tab === 'configuration') { renderClubsTable(); renderLayoutsTable(); renderTariffPlansTable(); }
     });
   });
 
@@ -1110,6 +1533,20 @@ function setupEventListeners() {
   document.getElementById('btn-add-zone').addEventListener('click', addZone);
   document.getElementById('btn-create-club').addEventListener('click', createClub);
   document.getElementById('props-save').addEventListener('click', saveItemProps);
+
+  // Tariff plan modal
+  document.getElementById('btn-add-tariff').addEventListener('click', () => openTariffModal(null));
+  document.getElementById('btn-save-tariff').addEventListener('click', saveTariff);
+
+  // Session start modal
+  document.getElementById('modal-tariff-select').addEventListener('change', updateStartModalTotal);
+  document.getElementById('modal-hours-select').addEventListener('change', updateStartModalTotal);
+  document.getElementById('btn-confirm-start').addEventListener('click', confirmStartSession);
+
+  // Session extend modal
+  document.getElementById('extend-tariff-select').addEventListener('change', updateExtendModalTotal);
+  document.getElementById('extend-hours-select').addEventListener('change', updateExtendModalTotal);
+  document.getElementById('btn-confirm-extend').addEventListener('click', confirmExtendSession);
 
   // Context menu actions
   document.getElementById('ctx-props').addEventListener('click', () => {

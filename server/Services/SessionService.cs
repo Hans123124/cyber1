@@ -23,11 +23,17 @@ public class SessionService(
 {
     public async Task<Session> StartAsync(StartSessionRequest request, CancellationToken ct = default)
     {
+        if (request.DurationHours <= 0)
+            throw new InvalidOperationException("DurationHours must be a positive whole number.");
+
         var tariff = await db.TariffPlans.FindAsync([request.TariffPlanId], ct)
             ?? throw new InvalidOperationException("Tariff plan not found.");
 
         if (!tariff.IsActive)
             throw new InvalidOperationException("Tariff plan is not active.");
+
+        if (tariff.Type == TariffType.Hourly && tariff.HourlyRateMdl <= 0)
+            throw new InvalidOperationException("Tariff plan has no hourly rate configured.");
 
         // Ensure no active session is already running on this workstation
         var existing = await db.Sessions
@@ -36,18 +42,25 @@ public class SessionService(
         if (existing is not null)
             throw new InvalidOperationException("Workstation already has an active session.");
 
+        // Compute amount strictly as hours × hourly rate (MDL)
+        var amount = tariff.Type == TariffType.Hourly
+            ? request.DurationHours * tariff.HourlyRateMdl
+            : tariff.Price;
+
         // Create payment record
         var sale = new Sale
         {
-            Amount = request.Amount,
-            Currency = request.Currency,
+            Amount = amount,
+            Currency = "MDL",
             Method = request.PaymentMethod,
             OperatorName = request.OperatorName
         };
         db.Sales.Add(sale);
 
-        // Calculate session end time
-        var endsAt = CalculateEndsAt(tariff, DateTime.UtcNow);
+        // Calculate session end time based on whole hours
+        var endsAt = tariff.Type == TariffType.Hourly
+            ? DateTime.UtcNow.AddHours(request.DurationHours)
+            : CalculateEndsAt(tariff, DateTime.UtcNow);
 
         // Create session
         var session = new Session
@@ -86,6 +99,9 @@ public class SessionService(
 
     public async Task<Session> ExtendAsync(Guid sessionId, ExtendSessionRequest request, CancellationToken ct = default)
     {
+        if (request.DurationHours <= 0)
+            throw new InvalidOperationException("DurationHours must be a positive whole number.");
+
         var session = await db.Sessions
             .Include(s => s.TariffPlan)
             .FirstOrDefaultAsync(s => s.Id == sessionId, ct)
@@ -97,18 +113,28 @@ public class SessionService(
         var tariff = await db.TariffPlans.FindAsync([request.TariffPlanId], ct)
             ?? throw new InvalidOperationException("Tariff plan not found.");
 
+        if (tariff.Type == TariffType.Hourly && tariff.HourlyRateMdl <= 0)
+            throw new InvalidOperationException("Tariff plan has no hourly rate configured.");
+
+        // Compute amount strictly as hours × hourly rate (MDL)
+        var amount = tariff.Type == TariffType.Hourly
+            ? request.DurationHours * tariff.HourlyRateMdl
+            : tariff.Price;
+
         // Create new sale for the extension
         var sale = new Sale
         {
-            Amount = request.Amount,
-            Currency = request.Currency,
+            Amount = amount,
+            Currency = "MDL",
             Method = request.PaymentMethod,
             OperatorName = request.OperatorName
         };
         db.Sales.Add(sale);
 
-        // Extend from current EndsAt
-        var newEndsAt = CalculateEndsAt(tariff, session.EndsAt);
+        // Extend from current EndsAt by whole hours
+        var newEndsAt = tariff.Type == TariffType.Hourly
+            ? session.EndsAt.AddHours(request.DurationHours)
+            : CalculateEndsAt(tariff, session.EndsAt);
         session.EndsAt = newEndsAt;
         session.TariffPlanId = tariff.Id;
 
