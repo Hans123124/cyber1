@@ -21,13 +21,16 @@ public class WorkstationsController(
 {
     /// <summary>
     /// GET /api/admin/workstations
-    /// Returns all workstations with their online status.
+    /// Returns all workstations with their online status. Optionally filter by clubId.
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<WorkstationDto>>> GetAll(CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<WorkstationDto>>> GetAll([FromQuery] Guid? clubId, CancellationToken ct)
     {
         var workstations = await workstationService.GetAllAsync(ct);
-        return Ok(workstations.Select(ToDto));
+        var result = clubId.HasValue
+            ? workstations.Where(w => w.ClubId == clubId)
+            : workstations;
+        return Ok(result.Select(ToDto));
     }
 
     /// <summary>
@@ -75,6 +78,24 @@ public class WorkstationsController(
     {
         var logs = await commandService.GetLogsAsync(take: 500, ct: ct);
         return Ok(logs.Select(ToLogDto));
+    }
+
+    /// <summary>
+    /// PATCH /api/admin/workstations/{id}/club
+    /// Assigns or removes a workstation from a club.
+    /// </summary>
+    [HttpPatch("{id:guid}/club")]
+    public async Task<ActionResult<WorkstationDto>> AssignClub(
+        Guid id,
+        [FromBody] AssignWorkstationClubRequest request,
+        CancellationToken ct)
+    {
+        var workstation = await db.Workstations.FindAsync([id], ct);
+        if (workstation is null) return NotFound();
+
+        workstation.ClubId = request.ClubId;
+        await db.SaveChangesAsync(ct);
+        return Ok(ToDto(workstation));
     }
 
     /// <summary>
@@ -158,7 +179,7 @@ public class WorkstationsController(
 
     private static WorkstationDto ToDto(Domain.Workstation w) => new(
         w.Id, w.Name, w.State, w.IsOnline, w.LastSeenAt, w.AgentVersion, w.IpAddress,
-        w.MeshCentralDeviceId, w.FogHostId, w.ImageGroup);
+        w.MeshCentralDeviceId, w.FogHostId, w.ImageGroup, w.ClubId);
 
     private static CommandLogDto ToLogDto(CommandLog c) => new(
         c.Id, c.WorkstationId, c.Command.ToString(), c.IssuedBy, c.Status.ToString(), c.Notes, c.IssuedAt, c.DeliveredAt);

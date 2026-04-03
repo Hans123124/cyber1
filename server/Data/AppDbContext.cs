@@ -14,6 +14,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<Club> Clubs => Set<Club>();
+    public DbSet<ClubSettings> ClubSettings => Set<ClubSettings>();
+    public DbSet<MapLayout> MapLayouts => Set<MapLayout>();
+    public DbSet<MapItem> MapItems => Set<MapItem>();
+    public DbSet<Zone> Zones => Set<Zone>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,6 +36,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(w => w.MeshCentralDeviceId).HasMaxLength(256);
             b.Property(w => w.FogHostId).HasMaxLength(128);
             b.Property(w => w.ImageGroup).HasMaxLength(128);
+            b.HasOne(w => w.Club)
+             .WithMany(c => c.Workstations)
+             .HasForeignKey(w => w.ClubId)
+             .OnDelete(DeleteBehavior.SetNull);
+            b.HasIndex(w => w.ClubId);
         });
 
         modelBuilder.Entity<AgentHeartbeat>(b =>
@@ -126,6 +136,68 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(s => s.TariffPlanId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── Club entities ──────────────────────────────────────────────────────
+        modelBuilder.Entity<Club>(b =>
+        {
+            b.HasKey(c => c.Id);
+            b.Property(c => c.Name).HasMaxLength(128);
+            b.HasIndex(c => c.Name);
+        });
+
+        modelBuilder.Entity<ClubSettings>(b =>
+        {
+            b.HasKey(s => s.Id);
+            b.HasOne(s => s.Club)
+             .WithOne(c => c.Settings)
+             .HasForeignKey<ClubSettings>(s => s.ClubId)
+             .OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(s => s.ClubId).IsUnique();
+        });
+
+        modelBuilder.Entity<MapLayout>(b =>
+        {
+            b.HasKey(l => l.Id);
+            b.HasOne(l => l.Club)
+             .WithMany(c => c.Layouts)
+             .HasForeignKey(l => l.ClubId)
+             .OnDelete(DeleteBehavior.Cascade);
+            b.Property(l => l.Name).HasMaxLength(128);
+            b.HasIndex(l => l.ClubId);
+        });
+
+        modelBuilder.Entity<Zone>(b =>
+        {
+            b.HasKey(z => z.Id);
+            b.HasOne(z => z.Layout)
+             .WithMany(l => l.Zones)
+             .HasForeignKey(z => z.LayoutId)
+             .OnDelete(DeleteBehavior.Cascade);
+            b.Property(z => z.Name).HasMaxLength(128);
+            b.Property(z => z.Color).HasMaxLength(32);
+            b.HasIndex(z => z.LayoutId);
+        });
+
+        modelBuilder.Entity<MapItem>(b =>
+        {
+            b.HasKey(i => i.Id);
+            b.HasOne(i => i.Layout)
+             .WithMany(l => l.Items)
+             .HasForeignKey(i => i.LayoutId)
+             .OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(i => i.Workstation)
+             .WithMany()
+             .HasForeignKey(i => i.WorkstationId)
+             .OnDelete(DeleteBehavior.SetNull);
+            b.HasOne(i => i.Zone)
+             .WithMany(z => z.Items)
+             .HasForeignKey(i => i.ZoneId)
+             .OnDelete(DeleteBehavior.SetNull);
+            b.Property(i => i.Label).HasMaxLength(128);
+            b.Property(i => i.MetaJson).HasColumnType("longtext");
+            b.HasIndex(i => i.LayoutId);
+            b.HasIndex(i => i.WorkstationId);
         });
     }
 }

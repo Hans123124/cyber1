@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberClub Admin</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1c2e;
+    --sidebar: #12141f;
+    --panel: #20233a;
+    --panel2: #272a42;
+    --accent: #5b6af0;
+    --accent2: #3d4ac0;
+    --text: #e0e2f5;
+    --text2: #8890b8;
+    --border: #2e3254;
+    --green: #2ecc71;
+    --red: #e74c3c;
+    --yellow: #f39c12;
+    --cell: 40px;
+    --grid-line: rgba(255,255,255,0.07);
+  }
+
+  body { display:flex; height:100vh; overflow:hidden; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; font-size:14px; }
+
+  /* ── Left nav ── */
+  #sidenav { width:56px; background:var(--sidebar); display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:4px; border-right:1px solid var(--border); flex-shrink:0; }
+  .nav-icon { width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:8px; cursor:pointer; color:var(--text2); transition:.15s; font-size:20px; }
+  .nav-icon:hover, .nav-icon.active { background:var(--accent); color:#fff; }
+  .nav-icon svg { width:22px; height:22px; }
+
+  /* ── Main layout ── */
+  #main { display:flex; flex-direction:column; flex:1; min-width:0; }
+
+  /* ── Top bar ── */
+  #topbar { height:52px; background:var(--sidebar); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; padding:0 16px; flex-shrink:0; }
+  #topbar h1 { font-size:16px; font-weight:600; color:var(--text); }
+  .tab-btn { padding:6px 16px; border-radius:6px; border:none; cursor:pointer; font-size:13px; font-weight:500; background:transparent; color:var(--text2); transition:.15s; }
+  .tab-btn.active { background:var(--accent); color:#fff; }
+  .tab-btn:hover:not(.active) { background:var(--panel2); color:var(--text); }
+  #club-selector { margin-left:auto; background:var(--panel2); border:1px solid var(--border); color:var(--text); padding:5px 10px; border-radius:6px; font-size:13px; cursor:pointer; min-width:160px; }
+  #club-selector:focus { outline:none; border-color:var(--accent); }
+
+  /* ── Content area ── */
+  #content { display:flex; flex:1; min-height:0; }
+
+  /* ── Map canvas area ── */
+  #map-area { flex:1; overflow:hidden; position:relative; background:#0f1120; }
+  #map-viewport { position:absolute; inset:0; overflow:hidden; cursor:grab; }
+  #map-viewport.panning { cursor:grabbing; }
+  #map-canvas { position:absolute; transform-origin:0 0; }
+  #grid-canvas { position:absolute; top:0; left:0; pointer-events:none; }
+  #items-layer { position:absolute; top:0; left:0; }
+  #zones-layer { position:absolute; top:0; left:0; pointer-events:none; }
+  #zone-draw-overlay { position:absolute; top:0; left:0; width:100%; height:100%; display:none; cursor:crosshair; }
+
+  /* ── Map controls ── */
+  #map-controls { position:absolute; bottom:16px; left:16px; display:flex; gap:6px; }
+  .map-btn { width:34px; height:34px; background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; transition:.15s; }
+  .map-btn:hover { background:var(--accent); border-color:var(--accent); }
+  #zoom-label { background:var(--panel); border:1px solid var(--border); color:var(--text2); border-radius:6px; padding:0 10px; font-size:12px; display:flex; align-items:center; min-width:52px; justify-content:center; }
+
+  /* ── Right panel ── */
+  #right-panel { width:260px; background:var(--panel); border-left:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+  #panel-tabs { display:flex; border-bottom:1px solid var(--border); }
+  .panel-tab { flex:1; padding:10px 4px; text-align:center; cursor:pointer; font-size:12px; font-weight:500; color:var(--text2); border-bottom:2px solid transparent; transition:.15s; }
+  .panel-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .panel-tab:hover:not(.active) { color:var(--text); }
+  .panel-content { display:none; flex:1; overflow-y:auto; padding:12px; flex-direction:column; gap:10px; }
+  .panel-content.active { display:flex; }
+
+  /* ── Settings panel ── */
+  .setting-group { display:flex; flex-direction:column; gap:8px; }
+  .setting-label { font-size:12px; color:var(--text2); font-weight:500; text-transform:uppercase; letter-spacing:.04em; margin-top:6px; }
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .toggle-row label { font-size:13px; color:var(--text); flex:1; }
+  .toggle { position:relative; width:36px; height:20px; flex-shrink:0; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .slider { position:absolute; inset:0; background:#3a3d5c; border-radius:20px; cursor:pointer; transition:.2s; }
+  .slider::before { content:''; position:absolute; left:3px; top:3px; width:14px; height:14px; background:#fff; border-radius:50%; transition:.2s; }
+  input:checked + .slider { background:var(--accent); }
+  input:checked + .slider::before { transform:translateX(16px); }
+  .num-input { background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 8px; font-size:13px; width:100%; }
+  .num-input:focus { outline:none; border-color:var(--accent); }
+  select.num-input { cursor:pointer; }
+  .save-btn { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:8px 16px; cursor:pointer; font-size:13px; font-weight:500; width:100%; transition:.15s; margin-top:4px; }
+  .save-btn:hover { background:var(--accent2); }
+
+  /* ── Elements panel ── */
+  .elements-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .element-tile { background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:8px 6px; text-align:center; cursor:grab; user-select:none; transition:.15s; }
+  .element-tile:hover { border-color:var(--accent); background:rgba(91,106,240,.12); }
+  .element-tile:active { cursor:grabbing; }
+  .element-icon { font-size:22px; margin-bottom:4px; }
+  .element-name { font-size:11px; color:var(--text2); }
+
+  /* ── Map items ── */
+  .map-item { position:absolute; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:move; user-select:none; transition:box-shadow .1s; font-size:10px; font-weight:600; text-align:center; overflow:hidden; flex-direction:column; gap:1px; }
+  .map-item:hover { box-shadow:0 0 0 2px var(--accent); z-index:10; }
+  .map-item.selected { box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--accent); z-index:20; }
+  .map-item .item-label { font-size:9px; font-weight:400; opacity:.8; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 2px; }
+  .item-pc { background:#1e4080; border:1px solid #2a5fbb; color:#8abff5; }
+  .item-pc.online { background:#1a5c2e; border-color:#2a8a44; color:#6fd68a; }
+  .item-pc.in-session { background:#5c1a1a; border-color:#8a2a2a; color:#f59595; }
+  .item-console { background:#3d1a5c; border:1px solid #6a2a9a; color:#c08ae0; }
+  .item-wall { background:#3a3a4a; border:1px solid #555565; color:#888; }
+  .item-corner { background:#2e2e3e; border:1px solid #444454; color:#666; border-radius:4px 4px 0 0; }
+  .item-triangle { background:#2e2e3e; border:1px solid #444454; color:#666; clip-path:polygon(0% 100%,100% 100%,0% 0%); }
+  .item-wallt { background:#3a3a4a; border:1px solid #555565; color:#888; }
+  .item-reception { background:#2a3a2a; border:1px solid #3a5a3a; color:#7ab87a; }
+  .item-bar { background:#3a2a1a; border:1px solid #6a4a2a; color:#d4955a; }
+  .item-sofa { background:#1a2a3a; border:1px solid #2a4a6a; color:#5a8ab8; }
+  .item-entranceexit { background:#3a2a00; border:1px solid #7a5a00; color:#d4b040; }
+  .item-other { background:#2a2a3a; border:1px solid #444454; color:#888; }
+
+  /* ── Zone rect ── */
+  .zone-rect { position:absolute; border-radius:4px; pointer-events:none; }
+  .zone-rect-label { position:absolute; top:4px; left:6px; font-size:10px; font-weight:600; opacity:.9; }
+
+  /* ── Zones panel ── */
+  .zone-list { display:flex; flex-direction:column; gap:6px; }
+  .zone-entry { background:var(--panel2); border:1px solid var(--border); border-radius:6px; padding:8px; display:flex; align-items:center; gap:8px; }
+  .zone-color-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+  .zone-entry-name { flex:1; font-size:13px; }
+  .zone-delete { background:transparent; border:none; color:var(--text2); cursor:pointer; font-size:14px; padding:2px 4px; border-radius:4px; transition:.15s; }
+  .zone-delete:hover { color:var(--red); background:rgba(231,76,60,.1); }
+  .zone-form { display:flex; flex-direction:column; gap:8px; background:var(--panel2); border-radius:8px; padding:10px; border:1px solid var(--border); }
+  .zone-form input[type=text] { background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:6px 8px; font-size:13px; }
+  .zone-form input[type=text]:focus { outline:none; border-color:var(--accent); }
+  .zone-form input[type=color] { width:100%; height:32px; border:1px solid var(--border); border-radius:6px; cursor:pointer; background:none; }
+  .draw-zone-btn { background:var(--panel2); border:1px dashed var(--accent); color:var(--accent); border-radius:6px; padding:7px; cursor:pointer; font-size:12px; font-weight:500; text-align:center; transition:.15s; }
+  .draw-zone-btn:hover, .draw-zone-btn.active { background:rgba(91,106,240,.2); }
+
+  /* ── Context menu ── */
+  #ctx-menu { position:fixed; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:4px; z-index:1000; display:none; min-width:160px; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+  .ctx-item { padding:7px 12px; border-radius:5px; cursor:pointer; font-size:13px; transition:.1s; }
+  .ctx-item:hover { background:var(--panel2); }
+  .ctx-item.danger { color:var(--red); }
+  .ctx-divider { height:1px; background:var(--border); margin:4px 0; }
+
+  /* ── Item properties popup ── */
+  #item-props { position:absolute; bottom:60px; right:10px; background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px; display:none; width:220px; z-index:100; box-shadow:0 8px 24px rgba(0,0,0,.4); flex-direction:column; gap:8px; }
+  #item-props h3 { font-size:13px; font-weight:600; margin-bottom:2px; }
+  #item-props label { font-size:11px; color:var(--text2); }
+  #item-props select, #item-props input { background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:5px; padding:5px 7px; font-size:12px; width:100%; }
+  #item-props select:focus, #item-props input:focus { outline:none; border-color:var(--accent); }
+  .props-row { display:flex; gap:6px; }
+  .props-row input { flex:1; }
+  #props-save { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:7px; cursor:pointer; font-size:12px; font-weight:500; width:100%; }
+  #props-save:hover { background:var(--accent2); }
+
+  /* ── Status indicator ── */
+  #status-bar { position:absolute; top:8px; left:8px; background:rgba(0,0,0,.5); border-radius:6px; padding:4px 10px; font-size:11px; color:var(--text2); pointer-events:none; }
+
+  /* ── Management tab ── */
+  #tab-management { display:none; flex:1; overflow:auto; padding:20px; flex-direction:column; gap:16px; }
+  #tab-management.active { display:flex; }
+  .mgmt-card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
+  .mgmt-card h2 { font-size:15px; margin-bottom:12px; }
+  .mgmt-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .mgmt-table th { color:var(--text2); font-weight:500; text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); }
+  .mgmt-table td { padding:8px; border-bottom:1px solid rgba(255,255,255,.04); }
+  .mgmt-table tr:last-child td { border-bottom:none; }
+  .status-badge { padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+  .badge-online { background:rgba(46,204,113,.15); color:var(--green); }
+  .badge-offline { background:rgba(231,76,60,.1); color:var(--red); }
+  .badge-session { background:rgba(243,156,18,.15); color:var(--yellow); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width:5px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- ── Left nav ── -->
+<nav id="sidenav">
+  <div class="nav-icon active" data-page="map" title="Map">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  </div>
+  <div class="nav-icon" data-page="management" title="Management">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="2" y="3" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/>
+      <rect x="2" y="17" width="20" height="4" rx="1"/>
+    </svg>
+  </div>
+  <div class="nav-icon" data-page="configuration" title="Configuration">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<div id="main">
+  <!-- Top bar -->
+  <div id="topbar">
+    <h1>CyberClub Admin</h1>
+    <button class="tab-btn active" data-tab="map">Map</button>
+    <button class="tab-btn" data-tab="management">Management</button>
+    <button class="tab-btn" data-tab="configuration">Configuration</button>
+    <select id="club-selector"><option value="">Loading clubs…</option></select>
+  </div>
+
+  <!-- Content -->
+  <div id="content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+
+    <!-- Map tab -->
+    <div id="tab-map" style="flex:1;display:flex;overflow:hidden;">
+      <div id="map-area">
+        <div id="map-viewport">
+          <div id="map-canvas">
+            <canvas id="grid-canvas"></canvas>
+            <div id="zones-layer"></div>
+            <div id="items-layer"></div>
+          </div>
+        </div>
+        <div id="zone-draw-overlay"></div>
+        <div id="status-bar">No club selected</div>
+        <div id="map-controls">
+          <button class="map-btn" id="btn-zoom-in" title="Zoom in">+</button>
+          <div id="zoom-label">100%</div>
+          <button class="map-btn" id="btn-zoom-out" title="Zoom out">−</button>
+          <button class="map-btn" id="btn-zoom-fit" title="Fit to screen">⊡</button>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div id="right-panel">
+        <div id="panel-tabs">
+          <div class="panel-tab active" data-panel="settings">Settings</div>
+          <div class="panel-tab" data-panel="elements">Elements</div>
+          <div class="panel-tab" data-panel="zones">Zones</div>
+        </div>
+
+        <!-- Settings -->
+        <div class="panel-content active" id="panel-settings">
+          <div class="setting-label">Idle Management</div>
+          <div class="toggle-row">
+            <label>Shutdown idle PC</label>
+            <label class="toggle"><input type="checkbox" id="s-idle-toggle"><span class="slider"></span></label>
+          </div>
+          <input type="number" class="num-input" id="s-idle-secs" placeholder="Seconds (e.g. 300)" min="0">
+          <div class="setting-label">Session</div>
+          <div class="toggle-row">
+            <label>Auto restart after session</label>
+            <label class="toggle"><input type="checkbox" id="s-restart-toggle"><span class="slider"></span></label>
+          </div>
+          <input type="number" class="num-input" id="s-restart-secs" placeholder="Seconds (e.g. 60)" min="0">
+          <div class="setting-label">Display</div>
+          <div class="toggle-row">
+            <label>Show gamer name on map</label>
+            <label class="toggle"><input type="checkbox" id="s-gamer-name" checked><span class="slider"></span></label>
+          </div>
+          <div class="setting-label">Action Menu</div>
+          <select class="num-input" id="s-action-menu">
+            <option value="ContextMenu">Context Menu (right-click)</option>
+            <option value="Buttons">Buttons</option>
+          </select>
+          <button class="save-btn" id="btn-save-settings">Save Settings</button>
+        </div>
+
+        <!-- Elements -->
+        <div class="panel-content" id="panel-elements">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">Drag elements to the map</div>
+          <div class="elements-grid" id="elements-grid"></div>
+        </div>
+
+        <!-- Zones -->
+        <div class="panel-content" id="panel-zones">
+          <div class="zone-form">
+            <div style="font-size:12px;color:var(--text2);font-weight:500;">New Zone</div>
+            <input type="text" id="zone-name" placeholder="Zone name">
+            <input type="color" id="zone-color" value="#4a90d9">
+            <button class="draw-zone-btn" id="btn-draw-zone">✏ Draw on map</button>
+            <button class="save-btn" id="btn-add-zone">Add Zone</button>
+          </div>
+          <div class="zone-list" id="zone-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Management tab -->
+    <div id="tab-management">
+      <div class="mgmt-card">
+        <h2>Workstations</h2>
+        <table class="mgmt-table" id="ws-table">
+          <thead><tr><th>Name</th><th>Status</th><th>IP</th><th>Club</th><th>Last Seen</th></tr></thead>
+          <tbody id="ws-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Configuration tab -->
+    <div id="tab-configuration" style="display:none;flex:1;overflow:auto;padding:20px;flex-direction:column;gap:16px;">
+      <div class="mgmt-card">
+        <h2>Clubs</h2>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <input type="text" class="num-input" id="new-club-name" placeholder="Club name" style="flex:1;">
+          <button class="save-btn" style="width:auto;padding:7px 16px;" id="btn-create-club">+ Add Club</button>
+        </div>
+        <table class="mgmt-table" id="clubs-table">
+          <thead><tr><th>Name</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="clubs-tbody"></tbody>
+        </table>
+      </div>
+      <div class="mgmt-card">
+        <h2>Map Layouts</h2>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Select a club above to manage its layouts.</div>
+        <table class="mgmt-table" id="layouts-table">
+          <thead><tr><th>Name</th><th>Size</th><th>Club</th><th>Actions</th></tr></thead>
+          <tbody id="layouts-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Context menu ── -->
+<div id="ctx-menu">
+  <div class="ctx-item" id="ctx-props">Properties</div>
+  <div class="ctx-item" id="ctx-rotate">Rotate 90°</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item danger" id="ctx-delete">Delete</div>
+</div>
+
+<!-- ── Item properties ── -->
+<div id="item-props">
+  <h3>Item Properties</h3>
+  <label>Label</label>
+  <input type="text" id="prop-label" placeholder="Label (optional)">
+  <label>Workstation</label>
+  <select id="prop-ws"><option value="">— none —</option></select>
+  <label>Zone</label>
+  <select id="prop-zone"><option value="">— none —</option></select>
+  <div class="props-row">
+    <div><label>W (cells)</label><input type="number" id="prop-w" min="1" max="20" value="1"></div>
+    <div><label>H (cells)</label><input type="number" id="prop-h" min="1" max="20" value="1"></div>
+  </div>
+  <button id="props-save">Save</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════
+const API = '/api/admin';
+const ADMIN_KEY = localStorage.getItem('adminKey') || '';
+const ELEMENTS = [
+  {type:'Pc',      icon:'🖥️', name:'PC'},
+  {type:'Console', icon:'🎮', name:'Console'},
+  {type:'Wall',    icon:'🧱', name:'Wall'},
+  {type:'Corner',  icon:'⬛', name:'Corner'},
+  {type:'Triangle',icon:'◥',  name:'Triangle'},
+  {type:'WallT',   icon:'⊤',  name:'Wall T'},
+  {type:'Reception',icon:'🛎', name:'Reception'},
+  {type:'Bar',     icon:'🍺', name:'Bar'},
+  {type:'Sofa',    icon:'🛋️', name:'Sofa'},
+  {type:'EntranceExit',icon:'🚪',name:'Entrance'},
+  {type:'Other',   icon:'⬜', name:'Other'},
+];
+
+let state = {
+  clubs: [],
+  currentClub: null,
+  layouts: [],
+  currentLayout: null,
+  items: [],
+  zones: [],
+  workstations: [],
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+  selectedItemId: null,
+  draggingItem: null,
+  drawingZone: false,
+  zoneStart: null,
+  zoneRect: null,
+};
+
+// ═══════════════════════════════════════════════════════════
+// API helpers
+// ═══════════════════════════════════════════════════════════
+async function apiFetch(path, opts = {}) {
+  const headers = {'Content-Type':'application/json', 'X-Admin-Key': ADMIN_KEY, ...(opts.headers||{})};
+  const r = await fetch(API + path, {...opts, headers});
+  if (!r.ok) throw new Error(await r.text());
+  if (r.status === 204) return null;
+  return r.json();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════════
+async function init() {
+  buildElementsPalette();
+  await loadClubs();
+  await loadWorkstations();
+  setupEventListeners();
+  startPolling();
+}
+
+function buildElementsPalette() {
+  const grid = document.getElementById('elements-grid');
+  grid.innerHTML = '';
+  ELEMENTS.forEach(el => {
+    const tile = document.createElement('div');
+    tile.className = 'element-tile';
+    tile.draggable = true;
+    tile.dataset.type = el.type;
+    tile.innerHTML = `<div class="element-icon">${el.icon}</div><div class="element-name">${el.name}</div>`;
+    tile.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', el.type);
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    grid.appendChild(tile);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// Clubs
+// ═══════════════════════════════════════════════════════════
+async function loadClubs() {
+  try {
+    state.clubs = await apiFetch('/clubs');
+    renderClubSelector();
+    renderClubsTable();
+    if (state.clubs.length > 0 && !state.currentClub) {
+      selectClub(state.clubs[0].id);
+    }
+  } catch(e) { console.error('Failed to load clubs:', e); }
+}
+
+function renderClubSelector() {
+  const sel = document.getElementById('club-selector');
+  sel.innerHTML = state.clubs.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if (state.currentClub) sel.value = state.currentClub.id;
+}
+
+async function selectClub(clubId) {
+  state.currentClub = state.clubs.find(c => c.id === clubId);
+  const sel = document.getElementById('club-selector');
+  if (sel) sel.value = clubId;
+  document.getElementById('status-bar').textContent = state.currentClub ? state.currentClub.name : 'No club';
+  await loadLayouts(clubId);
+  await loadSettings(clubId);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Layouts
+// ═══════════════════════════════════════════════════════════
+async function loadLayouts(clubId) {
+  try {
+    state.layouts = await apiFetch(`/clubs/${clubId}/layouts`);
+    if (state.layouts.length > 0) {
+      state.currentLayout = state.layouts[0];
+      await loadMapData();
+    }
+    renderLayoutsTable();
+  } catch(e) { console.error('Failed to load layouts:', e); }
+}
+
+async function loadMapData() {
+  if (!state.currentLayout) return;
+  const lid = state.currentLayout.id;
+  try {
+    [state.items, state.zones] = await Promise.all([
+      apiFetch(`/layouts/${lid}/items`),
+      apiFetch(`/layouts/${lid}/zones`),
+    ]);
+    drawGrid();
+    renderZones();
+    renderItems();
+    renderZoneList();
+  } catch(e) { console.error('Failed to load map data:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Settings
+// ═══════════════════════════════════════════════════════════
+async function loadSettings(clubId) {
+  try {
+    const s = await apiFetch(`/clubs/${clubId}/settings`);
+    document.getElementById('s-idle-toggle').checked = !!s.shutdownIdlePcSeconds;
+    document.getElementById('s-idle-secs').value = s.shutdownIdlePcSeconds || '';
+    document.getElementById('s-restart-toggle').checked = !!s.autoRestartAfterSessionSeconds;
+    document.getElementById('s-restart-secs').value = s.autoRestartAfterSessionSeconds || '';
+    document.getElementById('s-gamer-name').checked = s.showGamerNameOnMap;
+    document.getElementById('s-action-menu').value = s.singlePcActionMenuMode || 'ContextMenu';
+  } catch(e) { console.error('Failed to load settings:', e); }
+}
+
+async function saveSettings() {
+  if (!state.currentClub) return alert('Select a club first.');
+  const idleOn = document.getElementById('s-idle-toggle').checked;
+  const idleSecs = parseInt(document.getElementById('s-idle-secs').value) || null;
+  const restartOn = document.getElementById('s-restart-toggle').checked;
+  const restartSecs = parseInt(document.getElementById('s-restart-secs').value) || null;
+  const payload = {
+    shutdownIdlePcSeconds: idleOn ? idleSecs : null,
+    autoRestartAfterSessionSeconds: restartOn ? restartSecs : null,
+    showGamerNameOnMap: document.getElementById('s-gamer-name').checked,
+    singlePcActionMenuMode: document.getElementById('s-action-menu').value,
+  };
+  try {
+    await apiFetch(`/clubs/${state.currentClub.id}/settings`, {method:'PUT', body:JSON.stringify(payload)});
+    showToast('Settings saved');
+  } catch(e) { alert('Save failed: ' + e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Grid drawing
+// ═══════════════════════════════════════════════════════════
+function drawGrid() {
+  const layout = state.currentLayout;
+  if (!layout) return;
+  const cell = layout.gridCellSizePx || 40;
+  const W = layout.gridWidth * cell;
+  const H = layout.gridHeight * cell;
+  const canvas = document.getElementById('grid-canvas');
+  canvas.width = W; canvas.height = H;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  document.getElementById('map-canvas').style.width = W + 'px';
+  document.getElementById('map-canvas').style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= layout.gridWidth; x++) {
+    ctx.beginPath(); ctx.moveTo(x*cell+.5, 0); ctx.lineTo(x*cell+.5, H); ctx.stroke();
+  }
+  for (let y = 0; y <= layout.gridHeight; y++) {
+    ctx.beginPath(); ctx.moveTo(0, y*cell+.5); ctx.lineTo(W, y*cell+.5); ctx.stroke();
+  }
+  // Border
+  ctx.strokeStyle = 'rgba(91,106,240,0.3)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, W-2, H-2);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Zones rendering
+// ═══════════════════════════════════════════════════════════
+function renderZones() {
+  const layer = document.getElementById('zones-layer');
+  const layout = state.currentLayout;
+  if (!layout) { layer.innerHTML = ''; return; }
+  const cell = layout.gridCellSizePx || 40;
+  layer.innerHTML = state.zones.map(z => {
+    const hex = z.color;
+    const rgba = hexToRgba(hex, 0.18);
+    return `<div class="zone-rect" style="
+      left:${z.x*cell}px;top:${z.y*cell}px;
+      width:${z.w*cell}px;height:${z.h*cell}px;
+      background:${rgba};border:1.5px solid ${hex}80;">
+      <span class="zone-rect-label" style="color:${hex}">${z.name}</span>
+    </div>`;
+  }).join('');
+}
+
+function hexToRgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Items rendering
+// ═══════════════════════════════════════════════════════════
+function itemClass(type) {
+  return 'item-' + type.toLowerCase();
+}
+
+function itemIcon(type) {
+  const el = ELEMENTS.find(e => e.type === type);
+  return el ? el.icon : '⬜';
+}
+
+function getWsForItem(item) {
+  if (!item.workstationId) return null;
+  return state.workstations.find(w => w.id === item.workstationId) || null;
+}
+
+function renderItems() {
+  const layer = document.getElementById('items-layer');
+  const layout = state.currentLayout;
+  if (!layout) { layer.innerHTML = ''; return; }
+  const cell = layout.gridCellSizePx || 40;
+  layer.innerHTML = '';
+
+  state.items.forEach(item => {
+    const el = document.createElement('div');
+    const ws = getWsForItem(item);
+    let stateClass = '';
+    if (ws) {
+      stateClass = ws.isOnline ? ' online' : '';
+    }
+    el.className = `map-item ${itemClass(item.type)}${stateClass}${item.id === state.selectedItemId ? ' selected' : ''}`;
+    el.style.cssText = `
+      left:${item.x*cell}px;top:${item.y*cell}px;
+      width:${item.w*cell - 2}px;height:${item.h*cell - 2}px;
+      transform:rotate(${item.rotation||0}deg);
+    `;
+    el.dataset.id = item.id;
+
+    const label = item.label || (ws ? ws.name : '');
+    el.innerHTML = `<span>${itemIcon(item.type)}</span>${label ? `<span class="item-label">${label}</span>` : ''}`;
+
+    // Drag to move
+    el.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      startDragItem(e, item);
+    });
+
+    // Right-click context menu
+    el.addEventListener('contextmenu', e => {
+      e.preventDefault(); e.stopPropagation();
+      showContextMenu(e, item.id);
+    });
+
+    el.addEventListener('click', e => { e.stopPropagation(); selectItem(item.id); });
+
+    layer.appendChild(el);
+  });
+  updatePropsDropdowns();
+}
+
+function selectItem(id) {
+  state.selectedItemId = id;
+  renderItems();
+  if (id) showItemProps(id);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Item Drag (move on grid)
+// ═══════════════════════════════════════════════════════════
+function startDragItem(e, item) {
+  const layout = state.currentLayout;
+  if (!layout) return;
+  const cell = layout.gridCellSizePx || 40;
+  state.draggingItem = {item, startMouseX: e.clientX, startMouseY: e.clientY, origX: item.x, origY: item.y};
+  selectItem(item.id);
+
+  function onMove(e2) {
+    const dx = (e2.clientX - state.draggingItem.startMouseX) / (cell * state.scale);
+    const dy = (e2.clientY - state.draggingItem.startMouseY) / (cell * state.scale);
+    item.x = Math.max(0, Math.round(state.draggingItem.origX + dx));
+    item.y = Math.max(0, Math.round(state.draggingItem.origY + dy));
+    renderItems();
+  }
+
+  async function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    if (item.x !== state.draggingItem.origX || item.y !== state.draggingItem.origY) {
+      await saveItemPosition(item);
+    }
+    state.draggingItem = null;
+  }
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+async function saveItemPosition(item) {
+  try {
+    const updated = await apiFetch(`/items/${item.id}`, {
+      method:'PUT', body:JSON.stringify({x:item.x, y:item.y})
+    });
+    Object.assign(item, updated);
+  } catch(e) { console.error('Failed to move item:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Context menu
+// ═══════════════════════════════════════════════════════════
+let ctxItemId = null;
+function showContextMenu(e, itemId) {
+  ctxItemId = itemId;
+  selectItem(itemId);
+  const menu = document.getElementById('ctx-menu');
+  menu.style.display = 'block';
+  menu.style.left = e.clientX + 'px';
+  menu.style.top = e.clientY + 'px';
+}
+
+function hideContextMenu() {
+  document.getElementById('ctx-menu').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
+// Item properties panel
+// ═══════════════════════════════════════════════════════════
+function showItemProps(id) {
+  const item = state.items.find(i => i.id === id);
+  if (!item) return;
+  const panel = document.getElementById('item-props');
+  panel.style.display = 'flex';
+  document.getElementById('prop-label').value = item.label || '';
+  document.getElementById('prop-ws').value = item.workstationId || '';
+  document.getElementById('prop-zone').value = item.zoneId || '';
+  document.getElementById('prop-w').value = item.w || 1;
+  document.getElementById('prop-h').value = item.h || 1;
+}
+
+function updatePropsDropdowns() {
+  const wsSel = document.getElementById('prop-ws');
+  const zoneSel = document.getElementById('prop-zone');
+  const curWs = wsSel.value;
+  const curZone = zoneSel.value;
+  wsSel.innerHTML = '<option value="">— none —</option>' + state.workstations.map(w =>
+    `<option value="${w.id}">${w.name}</option>`).join('');
+  zoneSel.innerHTML = '<option value="">— none —</option>' + state.zones.map(z =>
+    `<option value="${z.id}">${z.name}</option>`).join('');
+  wsSel.value = curWs;
+  zoneSel.value = curZone;
+}
+
+async function saveItemProps() {
+  const item = state.items.find(i => i.id === state.selectedItemId);
+  if (!item) return;
+  const payload = {
+    label: document.getElementById('prop-label').value || null,
+    workstationId: document.getElementById('prop-ws').value || null,
+    zoneId: document.getElementById('prop-zone').value || null,
+    w: parseInt(document.getElementById('prop-w').value) || 1,
+    h: parseInt(document.getElementById('prop-h').value) || 1,
+  };
+  try {
+    const updated = await apiFetch(`/items/${item.id}`, {method:'PUT', body:JSON.stringify(payload)});
+    Object.assign(item, updated);
+    renderItems();
+    renderZones();
+    showToast('Item updated');
+  } catch(e) { alert('Save failed: ' + e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Drop from palette
+// ═══════════════════════════════════════════════════════════
+function setupDropZone() {
+  const viewport = document.getElementById('map-viewport');
+  viewport.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  viewport.addEventListener('drop', async e => {
+    e.preventDefault();
+    const type = e.dataTransfer.getData('text/plain');
+    if (!type || !state.currentLayout) return;
+    const layout = state.currentLayout;
+    const cell = layout.gridCellSizePx || 40;
+    const rect = document.getElementById('map-canvas').getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / (cell * state.scale));
+    const y = Math.floor((e.clientY - rect.top) / (cell * state.scale));
+    try {
+      const item = await apiFetch(`/layouts/${layout.id}/items`, {
+        method:'POST', body:JSON.stringify({type, x:Math.max(0,x), y:Math.max(0,y), w:1, h:1})
+      });
+      state.items.push(item);
+      renderItems();
+      selectItem(item.id);
+    } catch(e) { console.error('Drop failed:', e); }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// Pan & zoom
+// ═══════════════════════════════════════════════════════════
+function applyTransform() {
+  const canvas = document.getElementById('map-canvas');
+  canvas.style.transform = `translate(${state.offsetX}px,${state.offsetY}px) scale(${state.scale})`;
+  document.getElementById('zoom-label').textContent = Math.round(state.scale * 100) + '%';
+}
+
+function setupPanZoom() {
+  const viewport = document.getElementById('map-viewport');
+  let panning = false, panStart = {x:0, y:0}, panOrigin = {x:0, y:0};
+
+  viewport.addEventListener('mousedown', e => {
+    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+      panning = true;
+      panStart = {x:e.clientX, y:e.clientY};
+      panOrigin = {x:state.offsetX, y:state.offsetY};
+      viewport.classList.add('panning');
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (!panning) return;
+    state.offsetX = panOrigin.x + (e.clientX - panStart.x);
+    state.offsetY = panOrigin.y + (e.clientY - panStart.y);
+    applyTransform();
+  });
+
+  window.addEventListener('mouseup', e => {
+    if (panning) { panning = false; viewport.classList.remove('panning'); }
+  });
+
+  viewport.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    const rect = viewport.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    state.offsetX = mx - (mx - state.offsetX) * factor;
+    state.offsetY = my - (my - state.offsetY) * factor;
+    state.scale = Math.max(0.2, Math.min(4, state.scale * factor));
+    applyTransform();
+  }, {passive:false});
+
+  document.getElementById('btn-zoom-in').onclick = () => zoom(1.25);
+  document.getElementById('btn-zoom-out').onclick = () => zoom(0.8);
+  document.getElementById('btn-zoom-fit').onclick = fitToScreen;
+}
+
+function zoom(factor) {
+  const viewport = document.getElementById('map-viewport');
+  const rect = viewport.getBoundingClientRect();
+  const cx = rect.width/2, cy = rect.height/2;
+  state.offsetX = cx - (cx - state.offsetX) * factor;
+  state.offsetY = cy - (cy - state.offsetY) * factor;
+  state.scale = Math.max(0.2, Math.min(4, state.scale * factor));
+  applyTransform();
+}
+
+function fitToScreen() {
+  if (!state.currentLayout) return;
+  const viewport = document.getElementById('map-viewport');
+  const vr = viewport.getBoundingClientRect();
+  const layout = state.currentLayout;
+  const cell = layout.gridCellSizePx || 40;
+  const mapW = layout.gridWidth * cell, mapH = layout.gridHeight * cell;
+  const scaleX = (vr.width - 40) / mapW, scaleY = (vr.height - 40) / mapH;
+  state.scale = Math.min(scaleX, scaleY);
+  state.offsetX = (vr.width - mapW * state.scale) / 2;
+  state.offsetY = (vr.height - mapH * state.scale) / 2;
+  applyTransform();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Zone drawing
+// ═══════════════════════════════════════════════════════════
+function setupZoneDrawing() {
+  const overlay = document.getElementById('zone-draw-overlay');
+  let drawing = false, sx = 0, sy = 0, rect = null;
+
+  document.getElementById('btn-draw-zone').addEventListener('click', () => {
+    state.drawingZone = !state.drawingZone;
+    const btn = document.getElementById('btn-draw-zone');
+    btn.classList.toggle('active', state.drawingZone);
+    overlay.style.display = state.drawingZone ? 'block' : 'none';
+    if (!state.drawingZone && rect) { overlay.removeChild(rect); rect = null; }
+  });
+
+  overlay.addEventListener('mousedown', e => {
+    drawing = true;
+    const r = overlay.getBoundingClientRect();
+    const layout = state.currentLayout;
+    const cell = (layout?.gridCellSizePx || 40) * state.scale;
+    sx = Math.floor((e.clientX - r.left - state.offsetX) / cell);
+    sy = Math.floor((e.clientY - r.top - state.offsetY) / cell);
+    if (rect) overlay.removeChild(rect);
+    rect = document.createElement('div');
+    rect.style.cssText = 'position:absolute;border:2px dashed #5b6af0;background:rgba(91,106,240,.15);border-radius:4px;pointer-events:none;';
+    overlay.appendChild(rect);
+  });
+
+  overlay.addEventListener('mousemove', e => {
+    if (!drawing || !rect) return;
+    const r = overlay.getBoundingClientRect();
+    const layout = state.currentLayout;
+    const cell = (layout?.gridCellSizePx || 40) * state.scale;
+    const ex = Math.floor((e.clientX - r.left - state.offsetX) / cell);
+    const ey = Math.floor((e.clientY - r.top - state.offsetY) / cell);
+    const x1 = Math.min(sx, ex), y1 = Math.min(sy, ey);
+    const x2 = Math.max(sx, ex), y2 = Math.max(sy, ey);
+    rect.style.left = (x1 * cell + state.offsetX) + 'px';
+    rect.style.top = (y1 * cell + state.offsetY) + 'px';
+    rect.style.width = ((x2-x1+1) * cell) + 'px';
+    rect.style.height = ((y2-y1+1) * cell) + 'px';
+  });
+
+  overlay.addEventListener('mouseup', async e => {
+    if (!drawing) return;
+    drawing = false;
+    const r = overlay.getBoundingClientRect();
+    const layout = state.currentLayout;
+    const cell = (layout?.gridCellSizePx || 40) * state.scale;
+    const ex = Math.floor((e.clientX - r.left - state.offsetX) / cell);
+    const ey = Math.floor((e.clientY - r.top - state.offsetY) / cell);
+    const x1 = Math.min(sx, ex), y1 = Math.min(sy, ey);
+    const x2 = Math.max(sx, ex), y2 = Math.max(sy, ey);
+    const name = document.getElementById('zone-name').value.trim() || 'Zone';
+    const color = document.getElementById('zone-color').value || '#4a90d9';
+    if (overlay.contains(rect)) overlay.removeChild(rect);
+    rect = null;
+    state.drawingZone = false;
+    document.getElementById('btn-draw-zone').classList.remove('active');
+    overlay.style.display = 'none';
+
+    try {
+      const zone = await apiFetch(`/layouts/${layout.id}/zones`, {
+        method:'POST',
+        body: JSON.stringify({name, color, x:x1, y:y1, w:x2-x1+1, h:y2-y1+1})
+      });
+      state.zones.push(zone);
+      renderZones();
+      renderZoneList();
+      document.getElementById('zone-name').value = '';
+    } catch(err) { alert('Zone save failed: ' + err.message); }
+  });
+}
+
+function renderZoneList() {
+  const list = document.getElementById('zone-list');
+  list.innerHTML = state.zones.map(z => `
+    <div class="zone-entry">
+      <div class="zone-color-dot" style="background:${z.color}"></div>
+      <span class="zone-entry-name">${z.name}</span>
+      <button class="zone-delete" data-id="${z.id}">✕</button>
+    </div>
+  `).join('');
+  list.querySelectorAll('.zone-delete').forEach(btn => {
+    btn.addEventListener('click', () => deleteZone(btn.dataset.id));
+  });
+}
+
+async function addZone() {
+  if (!state.currentLayout) return alert('Select a club/layout first.');
+  const name = document.getElementById('zone-name').value.trim();
+  if (!name) return alert('Enter a zone name.');
+  const color = document.getElementById('zone-color').value;
+  try {
+    const zone = await apiFetch(`/layouts/${state.currentLayout.id}/zones`, {
+      method:'POST', body:JSON.stringify({name, color})
+    });
+    state.zones.push(zone);
+    renderZones();
+    renderZoneList();
+    document.getElementById('zone-name').value = '';
+    showToast('Zone added');
+  } catch(e) { alert('Failed: ' + e.message); }
+}
+
+async function deleteZone(id) {
+  if (!confirm('Delete this zone?')) return;
+  try {
+    await apiFetch(`/zones/${id}`, {method:'DELETE'});
+    state.zones = state.zones.filter(z => z.id !== id);
+    renderZones();
+    renderZoneList();
+  } catch(e) { alert('Delete failed: ' + e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Workstations
+// ═══════════════════════════════════════════════════════════
+async function loadWorkstations() {
+  try {
+    state.workstations = await apiFetch('/workstations');
+    renderWorkstationsTable();
+  } catch(e) { console.error('Failed to load workstations:', e); }
+}
+
+function renderWorkstationsTable() {
+  const tbody = document.getElementById('ws-tbody');
+  if (!tbody) return;
+  const clubs = Object.fromEntries(state.clubs.map(c => [c.id, c.name]));
+  tbody.innerHTML = state.workstations.map(w => {
+    const badge = w.isOnline ? 'badge-online' : 'badge-offline';
+    const label = w.isOnline ? 'Online' : 'Offline';
+    const seen = new Date(w.lastSeenAt).toLocaleString();
+    const club = w.clubId ? (clubs[w.clubId] || w.clubId) : '—';
+    return `<tr>
+      <td>${w.name}</td>
+      <td><span class="status-badge ${badge}">${label}</span></td>
+      <td>${w.ipAddress||'—'}</td>
+      <td>${club}</td>
+      <td>${seen}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// Configuration tab - Clubs table
+// ═══════════════════════════════════════════════════════════
+function renderClubsTable() {
+  const tbody = document.getElementById('clubs-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = state.clubs.map(c => `
+    <tr>
+      <td>${c.name}</td>
+      <td>${new Date(c.createdAt).toLocaleDateString()}</td>
+      <td>
+        <button class="map-btn" style="width:auto;padding:4px 10px;font-size:12px;" onclick="selectClub('${c.id}')">Select</button>
+      </td>
+    </tr>`).join('');
+}
+
+function renderLayoutsTable() {
+  const tbody = document.getElementById('layouts-tbody');
+  if (!tbody) return;
+  const clubs = Object.fromEntries(state.clubs.map(c => [c.id, c.name]));
+  tbody.innerHTML = state.layouts.map(l => `
+    <tr>
+      <td>${l.name}</td>
+      <td>${l.gridWidth}×${l.gridHeight}</td>
+      <td>${clubs[l.clubId] || l.clubId}</td>
+      <td>
+        <button class="map-btn" style="width:auto;padding:4px 10px;font-size:12px;" onclick="selectLayout('${l.id}')">Use</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function selectLayout(id) {
+  state.currentLayout = state.layouts.find(l => l.id === id);
+  await loadMapData();
+  fitToScreen();
+}
+
+async function createClub() {
+  const name = document.getElementById('new-club-name').value.trim();
+  if (!name) return alert('Enter club name.');
+  try {
+    const club = await apiFetch('/clubs', {method:'POST', body:JSON.stringify({name})});
+    state.clubs.push(club);
+    document.getElementById('new-club-name').value = '';
+    renderClubSelector();
+    renderClubsTable();
+    showToast('Club created');
+  } catch(e) { alert('Failed: ' + e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Tab navigation
+// ═══════════════════════════════════════════════════════════
+function setupTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      document.getElementById('tab-map').style.display = tab === 'map' ? 'flex' : 'none';
+      document.getElementById('tab-management').style.display = tab === 'management' ? 'flex' : 'none';
+      document.getElementById('tab-configuration').style.display = tab === 'configuration' ? 'flex' : 'none';
+      if (tab === 'management') renderWorkstationsTable();
+      if (tab === 'configuration') { renderClubsTable(); renderLayoutsTable(); }
+    });
+  });
+
+  // Nav icons
+  document.querySelectorAll('.nav-icon').forEach(icon => {
+    icon.addEventListener('click', () => {
+      document.querySelectorAll('.nav-icon').forEach(i => i.classList.remove('active'));
+      icon.classList.add('active');
+      const page = icon.dataset.page;
+      const tabMap = {map:'map', management:'management', configuration:'configuration'};
+      const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabMap[page]}"]`);
+      if (tabBtn) tabBtn.click();
+    });
+  });
+
+  // Panel tabs
+  document.querySelectorAll('.panel-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// Event listeners
+// ═══════════════════════════════════════════════════════════
+function setupEventListeners() {
+  setupTabs();
+  setupPanZoom();
+  setupDropZone();
+  setupZoneDrawing();
+
+  document.getElementById('club-selector').addEventListener('change', e => {
+    if (e.target.value) selectClub(e.target.value);
+  });
+
+  document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+  document.getElementById('btn-add-zone').addEventListener('click', addZone);
+  document.getElementById('btn-create-club').addEventListener('click', createClub);
+  document.getElementById('props-save').addEventListener('click', saveItemProps);
+
+  // Context menu actions
+  document.getElementById('ctx-props').addEventListener('click', () => {
+    hideContextMenu();
+    if (ctxItemId) { selectItem(ctxItemId); showItemProps(ctxItemId); }
+  });
+  document.getElementById('ctx-rotate').addEventListener('click', async () => {
+    hideContextMenu();
+    const item = state.items.find(i => i.id === ctxItemId);
+    if (!item) return;
+    item.rotation = ((item.rotation || 0) + 90) % 360;
+    renderItems();
+    try { await apiFetch(`/items/${item.id}`, {method:'PUT', body:JSON.stringify({rotation:item.rotation})}); }
+    catch(e) { console.error(e); }
+  });
+  document.getElementById('ctx-delete').addEventListener('click', async () => {
+    hideContextMenu();
+    if (!ctxItemId || !confirm('Delete this item?')) return;
+    try {
+      await apiFetch(`/items/${ctxItemId}`, {method:'DELETE'});
+      state.items = state.items.filter(i => i.id !== ctxItemId);
+      if (state.selectedItemId === ctxItemId) {
+        state.selectedItemId = null;
+        document.getElementById('item-props').style.display = 'none';
+      }
+      renderItems();
+    } catch(e) { alert('Delete failed: ' + e.message); }
+  });
+
+  // Close context menu on outside click
+  document.addEventListener('click', e => {
+    if (!document.getElementById('ctx-menu').contains(e.target)) hideContextMenu();
+    if (!document.getElementById('item-props').contains(e.target) &&
+        !e.target.closest('.map-item')) {
+      // keep panel open for now, only close on map click
+    }
+  });
+
+  // Deselect on canvas click
+  document.getElementById('map-viewport').addEventListener('click', e => {
+    if (e.target === document.getElementById('map-viewport') ||
+        e.target === document.getElementById('map-canvas') ||
+        e.target === document.getElementById('grid-canvas')) {
+      state.selectedItemId = null;
+      document.getElementById('item-props').style.display = 'none';
+      renderItems();
+    }
+  });
+
+  // Keyboard
+  document.addEventListener('keydown', async e => {
+    if (e.key === 'Delete' && state.selectedItemId) {
+      if (!confirm('Delete selected item?')) return;
+      try {
+        await apiFetch(`/items/${state.selectedItemId}`, {method:'DELETE'});
+        state.items = state.items.filter(i => i.id !== state.selectedItemId);
+        state.selectedItemId = null;
+        document.getElementById('item-props').style.display = 'none';
+        renderItems();
+      } catch(err) { console.error(err); }
+    }
+    if (e.key === 'Escape') { hideContextMenu(); state.drawingZone = false; }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// Polling
+// ═══════════════════════════════════════════════════════════
+function startPolling() {
+  setInterval(async () => {
+    await loadWorkstations();
+    if (state.currentLayout) renderItems(); // refresh PC status colors
+  }, 5000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// Toast
+// ═══════════════════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#2ecc71;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.3);animation:fadeIn .2s;';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+init();
+</script>
+</body>
+</html>

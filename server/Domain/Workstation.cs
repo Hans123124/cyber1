@@ -13,6 +13,10 @@ public class Workstation
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime LastSeenAt { get; set; } = DateTime.UtcNow;
 
+    // Club assignment
+    public Guid? ClubId { get; set; }
+    public Club? Club { get; set; }
+
     // Integration fields
     public string? MeshCentralDeviceId { get; set; }
     public string? FogHostId { get; set; }
