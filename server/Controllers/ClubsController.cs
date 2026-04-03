@@ -1,6 +1,8 @@
 using CyberServer.Data;
 using CyberServer.Domain;
 using CyberServer.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,18 +10,35 @@ namespace CyberServer.Controllers;
 
 /// <summary>
 /// Admin endpoints for managing clubs and their settings.
-/// Protected by X-Admin-Key header.
 /// </summary>
 [ApiController]
 [Route("api/admin/clubs")]
-public class ClubsController(AppDbContext db) : ControllerBase
+[Authorize]
+public class ClubsController(AppDbContext db, UserManager<ApplicationUser> userManager) : ControllerBase
 {
-    /// <summary>GET /api/admin/clubs — list all clubs.</summary>
+    /// <summary>GET /api/admin/clubs — list clubs (filtered for non-SuperAdmin).</summary>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ClubDto>>> GetAll(CancellationToken ct)
     {
-        var clubs = await db.Clubs.OrderBy(c => c.Name).ToListAsync(ct);
-        return Ok(clubs.Select(ToDto));
+        if (User.IsInRole("SuperAdmin"))
+        {
+            var clubs = await db.Clubs.OrderBy(c => c.Name).ToListAsync(ct);
+            return Ok(clubs.Select(ToDto));
+        }
+        else
+        {
+            var user = await userManager.GetUserAsync(User);
+            if (user is null) return Unauthorized();
+            var assignedClubIds = await db.UserClubAccess
+                .Where(a => a.UserId == user.Id)
+                .Select(a => a.ClubId)
+                .ToListAsync(ct);
+            var clubs = await db.Clubs
+                .Where(c => assignedClubIds.Contains(c.Id))
+                .OrderBy(c => c.Name)
+                .ToListAsync(ct);
+            return Ok(clubs.Select(ToDto));
+        }
     }
 
     /// <summary>GET /api/admin/clubs/{id}</summary>
@@ -32,6 +51,7 @@ public class ClubsController(AppDbContext db) : ControllerBase
 
     /// <summary>POST /api/admin/clubs — create a new club.</summary>
     [HttpPost]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<ActionResult<ClubDto>> Create([FromBody] CreateClubRequest req, CancellationToken ct)
     {
         var club = new Club { Name = req.Name };

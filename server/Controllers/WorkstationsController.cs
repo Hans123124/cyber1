@@ -2,6 +2,7 @@ using CyberServer.Data;
 using CyberServer.Domain;
 using CyberServer.Models;
 using CyberServer.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,10 +10,10 @@ namespace CyberServer.Controllers;
 
 /// <summary>
 /// Admin endpoints for managing workstations and sending commands.
-/// Protected by X-Admin-Key header (see AdminKeyMiddleware).
 /// </summary>
 [ApiController]
 [Route("api/admin/workstations")]
+[Authorize]
 public class WorkstationsController(
     IWorkstationService workstationService,
     ICommandService commandService,
