@@ -71,7 +71,7 @@ public class AgentWorker(ILogger<AgentWorker> logger) : BackgroundService
 
             try
             {
-                var (cpu, ram) = GetMetrics();
+                var (cpu, ram) = await GetMetricsAsync();
                 var state = GetCurrentState();
                 await api.HeartbeatAsync(_config, AgentVersion, state, cpu, ram, stoppingToken);
                 logger.LogDebug("Heartbeat sent (state={State}, cpu={Cpu:F1}%, ram={Ram:F0}MB)", state, cpu, ram);
@@ -178,7 +178,7 @@ public class AgentWorker(ILogger<AgentWorker> logger) : BackgroundService
         return "Locked";
     }
 
-    private static (double cpu, double ram) GetMetrics()
+    private static async Task<(double cpu, double ram)> GetMetricsAsync()
     {
         var process = System.Diagnostics.Process.GetCurrentProcess();
         var ramMb = process.WorkingSet64 / 1024.0 / 1024.0;
@@ -189,7 +189,7 @@ public class AgentWorker(ILogger<AgentWorker> logger) : BackgroundService
         {
             using var counter = new System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total");
             counter.NextValue();
-            System.Threading.Thread.Sleep(100);
+            await Task.Delay(100);
             cpu = counter.NextValue();
         }
         catch { }
