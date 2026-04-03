@@ -9,6 +9,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AgentHeartbeat> AgentHeartbeats => Set<AgentHeartbeat>();
     public DbSet<CommandLog> CommandLogs => Set<CommandLog>();
     public DbSet<ExternalReceipt> ExternalReceipts => Set<ExternalReceipt>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<TariffPlan> TariffPlans => Set<TariffPlan>();
+    public DbSet<Sale> Sales => Set<Sale>();
+    public DbSet<Session> Sessions => Set<Session>();
+    public DbSet<Subscription> Subscriptions => Set<Subscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,6 +64,68 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(r => r.Amount).HasPrecision(18, 4);
             b.Property(r => r.SessionId).HasMaxLength(256);
             b.Property(r => r.RawJson).HasColumnType("longtext");
+        });
+
+        modelBuilder.Entity<Customer>(b =>
+        {
+            b.HasKey(c => c.Id);
+            b.Property(c => c.Username).HasMaxLength(128);
+            b.Property(c => c.Phone).HasMaxLength(32);
+            b.HasIndex(c => c.Username);
+            b.HasIndex(c => c.Phone);
+        });
+
+        modelBuilder.Entity<TariffPlan>(b =>
+        {
+            b.HasKey(t => t.Id);
+            b.Property(t => t.Name).HasMaxLength(128);
+            b.Property(t => t.Price).HasPrecision(18, 4);
+        });
+
+        modelBuilder.Entity<Sale>(b =>
+        {
+            b.HasKey(s => s.Id);
+            b.Property(s => s.Amount).HasPrecision(18, 4);
+            b.Property(s => s.Currency).HasMaxLength(8);
+            b.Property(s => s.OperatorName).HasMaxLength(128);
+        });
+
+        modelBuilder.Entity<Session>(b =>
+        {
+            b.HasKey(s => s.Id);
+            b.HasOne(s => s.Workstation)
+             .WithMany()
+             .HasForeignKey(s => s.WorkstationId)
+             .OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(s => s.Customer)
+             .WithMany(c => c.Sessions)
+             .HasForeignKey(s => s.CustomerId)
+             .OnDelete(DeleteBehavior.SetNull);
+            b.HasOne(s => s.TariffPlan)
+             .WithMany()
+             .HasForeignKey(s => s.TariffPlanId)
+             .OnDelete(DeleteBehavior.Restrict);
+            b.HasOne(s => s.Sale)
+             .WithMany(p => p.Sessions)
+             .HasForeignKey(s => s.SaleId)
+             .OnDelete(DeleteBehavior.Restrict);
+            b.Property(s => s.GuestName).HasMaxLength(128);
+            b.HasIndex(s => s.WorkstationId);
+            // Composite index for expiry service query (Status, EndsAt)
+            b.HasIndex(s => new { s.Status, s.EndsAt });
+        });
+
+        modelBuilder.Entity<Subscription>(b =>
+        {
+            b.HasKey(s => s.Id);
+            b.HasOne(s => s.Customer)
+             .WithMany(c => c.Subscriptions)
+             .HasForeignKey(s => s.CustomerId)
+             .OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(s => s.TariffPlan)
+             .WithMany()
+             .HasForeignKey(s => s.TariffPlanId)
+             .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

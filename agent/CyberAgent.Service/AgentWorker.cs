@@ -16,6 +16,10 @@ public class AgentWorker(ILogger<AgentWorker> logger) : BackgroundService
     private readonly AgentConfig _config = AgentConfig.Load();
     private HubConnection? _hub;
 
+    /// <summary>Tracks when the current session ends so the agent can auto-reboot.</summary>
+    private DateTime? _sessionEndsAt;
+    private System.Threading.Timer? _sessionTimer;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var http = new HttpClient { BaseAddress = new Uri(_config.ServerUrl) };
@@ -53,6 +57,7 @@ public class AgentWorker(ILogger<AgentWorker> logger) : BackgroundService
                 .Build();
 
             _hub.On<object>("ReceiveCommand", HandleCommand);
+            _hub.On<object>("ReceiveSessionUpdate", HandleSessionUpdate);
 
             _hub.Reconnected += async _ =>
             {
@@ -162,6 +167,73 @@ public class AgentWorker(ILogger<AgentWorker> logger) : BackgroundService
         }
     }
 
+    private void HandleSessionUpdate(object payload)
+    {
+        logger.LogInformation("Received session update: {Payload}", payload);
+
+        try
+        {
+            var json = payload?.ToString() ?? string.Empty;
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("Type", out var typeProp)) return;
+            var type = typeProp.GetString();
+
+            switch (type)
+            {
+                case "SessionStarted":
+                case "SessionExtended":
+                    if (root.TryGetProperty("EndsAt", out var endsAtProp) &&
+                        endsAtProp.TryGetDateTime(out var endsAt))
+                    {
+                        _sessionEndsAt = endsAt.ToUniversalTime();
+                        ScheduleSessionExpiry(_sessionEndsAt.Value);
+                        logger.LogInformation("Session {Type}: ends at {EndsAt}", type, _sessionEndsAt);
+                    }
+                    break;
+
+                case "SessionEnded":
+                    CancelSessionTimer();
+                    _sessionEndsAt = null;
+                    logger.LogInformation("Session ended by server.");
+                    // Lock + reboot will come as separate commands
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error handling session update.");
+        }
+    }
+
+    private void ScheduleSessionExpiry(DateTime endsAt)
+    {
+        CancelSessionTimer();
+
+        var delay = endsAt - DateTime.UtcNow;
+        if (delay <= TimeSpan.Zero)
+        {
+            // Already expired — reboot immediately
+            logger.LogWarning("Session already expired, rebooting immediately.");
+            SystemCommandExecutor.Reboot();
+            return;
+        }
+
+        logger.LogInformation("Scheduling local session expiry timer for {Delay}", delay);
+        _sessionTimer = new System.Threading.Timer(_ =>
+        {
+            logger.LogInformation("Local session timer fired: rebooting.");
+            try { SystemCommandExecutor.Reboot(); } catch { }
+        }, null, delay, System.Threading.Timeout.InfiniteTimeSpan);
+    }
+
+    private void CancelSessionTimer()
+    {
+        _sessionTimer?.Dispose();
+        _sessionTimer = null;
+    }
+
     private static string GetCurrentState()
     {
         // Check the named event to determine if the UI lock screen is showing
@@ -199,6 +271,7 @@ public class AgentWorker(ILogger<AgentWorker> logger) : BackgroundService
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
+        CancelSessionTimer();
         if (_hub is not null)
             await _hub.StopAsync(cancellationToken);
         await base.StopAsync(cancellationToken);

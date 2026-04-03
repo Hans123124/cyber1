@@ -15,6 +15,7 @@ public partial class LockWindow : Window
     private readonly DispatcherTimer _clockTimer;
     private readonly Thread _unlockListenerThread;
     private bool _unlocked;
+    private DateTime? _sessionEndsAt;
 
     public LockWindow()
     {
@@ -22,9 +23,9 @@ public partial class LockWindow : Window
 
         WorkstationLabel.Text = $"Workstation: {_config.WorkstationName}";
 
-        // Clock timer
+        // Clock timer — also drives the countdown
         _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _clockTimer.Tick += (_, _) => ClockText.Text = DateTime.Now.ToString("HH:mm:ss  dd.MM.yyyy");
+        _clockTimer.Tick += (_, _) => UpdateClockAndCountdown();
         _clockTimer.Start();
 
         // Disable close button via Windows API
@@ -36,6 +37,29 @@ public partial class LockWindow : Window
 
         // Connect to SignalR hub
         _ = ConnectToHubAsync();
+    }
+
+    private void UpdateClockAndCountdown()
+    {
+        ClockText.Text = DateTime.Now.ToString("HH:mm:ss  dd.MM.yyyy");
+
+        if (_unlocked && _sessionEndsAt.HasValue)
+        {
+            var remaining = _sessionEndsAt.Value - DateTime.UtcNow;
+            if (remaining > TimeSpan.Zero)
+            {
+                CountdownText.Text = $"Time remaining: {remaining:hh\\:mm\\:ss}";
+                CountdownText.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                CountdownText.Text = "Session ending...";
+            }
+        }
+        else
+        {
+            CountdownText.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void CallAdmin_Click(object sender, RoutedEventArgs e)
@@ -65,6 +89,11 @@ public partial class LockWindow : Window
         _hub.On<object>("ReceiveCommand", payload =>
         {
             Dispatcher.Invoke(() => HandleCommand(payload?.ToString() ?? string.Empty));
+        });
+
+        _hub.On<object>("ReceiveSessionUpdate", payload =>
+        {
+            Dispatcher.Invoke(() => HandleSessionUpdate(payload?.ToString() ?? string.Empty));
         });
 
         _hub.Reconnected += _ => { UpdateStatus("Reconnected."); return Task.CompletedTask; };
@@ -103,8 +132,7 @@ public partial class LockWindow : Window
                     DoUnlock();
                     break;
                 case "Lock":
-                    Show();
-                    Topmost = true;
+                    DoLock();
                     break;
             }
 
@@ -114,7 +142,38 @@ public partial class LockWindow : Window
         catch { }
     }
 
-    // ── Unlock ────────────────────────────────────────────────────────────────
+    private void HandleSessionUpdate(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("Type", out var typeProp)) return;
+            var type = typeProp.GetString();
+
+            switch (type)
+            {
+                case "SessionStarted":
+                case "SessionExtended":
+                    if (root.TryGetProperty("EndsAt", out var endsAtProp) &&
+                        endsAtProp.TryGetDateTime(out var endsAt))
+                    {
+                        _sessionEndsAt = endsAt.ToUniversalTime();
+                        CountdownText.Visibility = Visibility.Visible;
+                    }
+                    break;
+
+                case "SessionEnded":
+                    _sessionEndsAt = null;
+                    CountdownText.Visibility = Visibility.Collapsed;
+                    // Lock + Reboot will arrive as separate commands
+                    break;
+            }
+        }
+        catch { }
+    }
+
+    // ── Unlock / Lock ─────────────────────────────────────────────────────────
 
     private void ListenForUnlock()
     {
@@ -140,6 +199,26 @@ public partial class LockWindow : Window
             GC.KeepAlive(evt);
         }
         catch { }
+    }
+
+    private void DoLock()
+    {
+        _unlocked = false;
+        _sessionEndsAt = null;
+        CountdownText.Visibility = Visibility.Collapsed;
+
+        // Reset the IsUnlocked event
+        try
+        {
+            if (EventWaitHandle.TryOpenExisting("Global\\CyberClub_IsUnlocked", out var evt))
+            {
+                using (evt) evt.Reset();
+            }
+        }
+        catch { }
+
+        Show();
+        Topmost = true;
     }
 
     // ── Prevent close ─────────────────────────────────────────────────────────

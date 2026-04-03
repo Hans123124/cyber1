@@ -84,3 +84,87 @@ public record ExternalReceiptDto(
     Guid? WorkstationId,
     string? SessionId);
 
+// ── Tariff Plans ──────────────────────────────────────────────────────────────
+
+public record TariffPlanDto(
+    Guid Id,
+    string Name,
+    string Type,
+    int? DurationMinutes,
+    int? DurationDays,
+    decimal Price,
+    bool IsActive,
+    int SortOrder);
+
+public record CreateTariffPlanRequest(
+    string Name,
+    TariffType Type,
+    int? DurationMinutes,
+    int? DurationDays,
+    decimal Price,
+    bool IsActive = true,
+    int SortOrder = 0);
+
+public record UpdateTariffPlanRequest(
+    string? Name,
+    int? DurationMinutes,
+    int? DurationDays,
+    decimal? Price,
+    bool? IsActive,
+    int? SortOrder);
+
+// ── Customers ─────────────────────────────────────────────────────────────────
+
+public record CustomerDto(
+    Guid Id,
+    string? Username,
+    string? Phone,
+    DateTime CreatedAt,
+    bool IsActive);
+
+public record CreateCustomerRequest(
+    string? Username,
+    string? Phone);
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+
+public record StartSessionRequest(
+    Guid WorkstationId,
+    Guid TariffPlanId,
+    Guid? CustomerId,
+    string? GuestName,
+    decimal Amount,
+    string Currency = "KZT",
+    PaymentMethod PaymentMethod = PaymentMethod.Cash,
+    string OperatorName = "admin");
+
+public record ExtendSessionRequest(
+    Guid TariffPlanId,
+    decimal Amount,
+    string Currency = "KZT",
+    PaymentMethod PaymentMethod = PaymentMethod.Cash,
+    string OperatorName = "admin");
+
+public record EndSessionRequest(bool Reboot = true);
+
+public record SessionDto(
+    Guid Id,
+    Guid WorkstationId,
+    Guid? CustomerId,
+    string? GuestName,
+    Guid TariffPlanId,
+    string TariffPlanName,
+    Guid SaleId,
+    DateTime StartedAt,
+    DateTime EndsAt,
+    string Status,
+    DateTime? EndedAt);
+
+public record SaleDto(
+    Guid Id,
+    DateTime CreatedAt,
+    decimal Amount,
+    string Currency,
+    string Method,
+    string? OperatorName);
+

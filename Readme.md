@@ -97,6 +97,8 @@ The agent requires Windows (WPF + Windows Service + WMI).
 
 ### Admin Endpoints (protected by `X-Admin-Key` header)
 
+#### Workstations
+
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/admin/workstations` | List all workstations with online status |
@@ -120,27 +122,127 @@ The agent requires Windows (WPF + Windows Service + WMI).
 
 Commands: `Lock`, `Unlock`, `Reboot`, `Shutdown`, `Message`, `Reimage`
 
-**Update integration fields:**
+#### Tariff Plans
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/admin/tariffs` | List active tariff plans (add `?includeInactive=true` for all) |
+| `GET` | `/api/admin/tariffs/{id}` | Get tariff plan by ID |
+| `POST` | `/api/admin/tariffs` | Create new tariff plan |
+| `PATCH` | `/api/admin/tariffs/{id}` | Update tariff plan |
+| `DELETE` | `/api/admin/tariffs/{id}` | Deactivate tariff plan (soft delete) |
+
+**Create hourly plan:**
 ```json
 {
-  "meshCentralDeviceId": "abc123nodeId",
-  "fogHostId": "42",
-  "imageGroup": "Hall1-Standard"
+  "name": "1 Hour",
+  "type": "Hourly",
+  "durationMinutes": 60,
+  "price": 300,
+  "isActive": true,
+  "sortOrder": 1
 }
 ```
 
-**Link external receipt:**
+**Create monthly plan:**
 ```json
 {
-  "source": "erpnext",
-  "receiptNo": "POS-2026-0001",
-  "amount": 1500.00,
-  "currency": "KZT",
-  "workstationId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "sessionId": "session-ref-optional",
-  "rawJson": "{\"raw\": \"payload\"}"
+  "name": "Monthly Subscription",
+  "type": "Monthly",
+  "durationDays": 30,
+  "price": 5000,
+  "isActive": true,
+  "sortOrder": 10
 }
 ```
+
+#### Customers
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/admin/customers` | List all active customers |
+| `GET` | `/api/admin/customers/{id}` | Get customer by ID |
+| `GET` | `/api/admin/customers/lookup?username=&phone=` | Lookup customer by username or phone |
+| `POST` | `/api/admin/customers` | Create new customer |
+
+**Create customer:**
+```json
+{
+  "username": "john_doe",
+  "phone": "+77771234567"
+}
+```
+
+#### Sessions (Prepaid Flow)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/admin/sessions` | List sessions (`?workstationId=&date=2026-04-03`) |
+| `GET` | `/api/admin/sessions/{id}` | Get session by ID |
+| `POST` | `/api/admin/sessions/start` | Sell time & start session (creates Sale + Session, unlocks PC) |
+| `POST` | `/api/admin/sessions/{id}/extend` | Extend session with additional paid time |
+| `POST` | `/api/admin/sessions/{id}/end` | End session early (locks PC, optionally reboots) |
+
+**Start session (prepaid flow):**
+```json
+{
+  "workstationId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "tariffPlanId": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+  "customerId": null,
+  "guestName": "Guest",
+  "amount": 300.00,
+  "currency": "KZT",
+  "paymentMethod": "Cash",
+  "operatorName": "Cashier1"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "zzzzzzzz-...",
+  "workstationId": "xxxxxxxx-...",
+  "customerId": null,
+  "guestName": "Guest",
+  "tariffPlanId": "yyyyyyyy-...",
+  "tariffPlanName": "1 Hour",
+  "saleId": "aaaaaaaa-...",
+  "startedAt": "2026-04-03T10:00:00Z",
+  "endsAt": "2026-04-03T11:00:00Z",
+  "status": "Active",
+  "endedAt": null
+}
+```
+
+On `start`, the server:
+1. Creates a `Sale` record (payment proof)
+2. Creates a `Session` record with `endsAt = now + tariffDuration`
+3. Sends `Unlock` command to the agent
+4. Sends `SessionStarted` SignalR event to the agent (with `endsAt`)
+
+**Extend session:**
+```json
+{
+  "tariffPlanId": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+  "amount": 300.00,
+  "currency": "KZT",
+  "paymentMethod": "Cash",
+  "operatorName": "Cashier1"
+}
+```
+
+Extension adds time from the current `endsAt` (not from now), ensuring no overlap.
+
+**End session early:**
+```json
+{ "reboot": true }
+```
+
+When session ends (early or expired):
+1. Session status → `Ended`
+2. `SessionEnded` event sent to agent
+3. `Lock` command sent
+4. If `reboot: true` (or auto-expiry): `Reboot` command sent → PC reboots → lock screen appears on next login
 
 ### SignalR Hub
 
@@ -153,6 +255,24 @@ Commands: `Lock`, `Unlock`, `Reboot`, `Shutdown`, `Message`, `Reimage`
 **Server → Agent:**
 - `ReceiveCommand({ CommandLogId, Command, Notes })` – command delivery
 - `Joined(workstationId)` – join confirmation
+- `ReceiveSessionUpdate({ Type, SessionId, EndsAt? })` – session state changes
+
+Session update types:
+- `SessionStarted` – session started, includes `EndsAt`
+- `SessionExtended` – session extended, includes new `EndsAt`
+- `SessionEnded` – session ended (lock + reboot will follow as commands)
+
+---
+
+## Session Expiry (Background Service)
+
+The server runs a background service (`SessionExpiryService`) that:
+- Polls every **30 seconds** for sessions where `endsAt <= now` and `status = Active`
+- Marks each expired session as `Ended`
+- Sends `Lock` + `Reboot` commands to the workstation
+- Logs the action in the command audit log
+
+The agent also has a **local timer** that fires at `endsAt` to reboot the PC, as a fallback in case of network issues.
 
 ---
 
@@ -215,86 +335,36 @@ The agent reads `ServerUrl` and `WorkstationName` from this file. On first run (
 
 ---
 
-## MeshCentral Integration
+## Prepaid Session Flow (Step by Step)
 
-### How MeshCentral uses TCP
-
-MeshCentral agents connect to the MeshCentral server via **TCP over HTTPS/WebSocket (port 443 by default)**. This is standard TCP — just wrapped in a secure web transport that works reliably through NAT and firewalls.
-
-- Default port: **443/TCP** (HTTPS/WSS)
-- Optional alternate port: **4443/TCP** (configurable in MeshCentral config)
-- For **raw TCP port mapping** (e.g. RDP port forwarding, custom services): use **MeshCentral Router**, which creates an on-demand TCP tunnel via the MeshCentral server.
-
-### Setup steps
-
-1. Install MeshCentral on your server (see [MeshCentral docs](https://github.com/Ylianst/MeshCentral)):
-   ```bash
-   npm install meshcentral
-   node node_modules/meshcentral
-   ```
-2. Open port **443/TCP** (or your configured port) in your firewall.
-3. Install the MeshCentral agent on each club PC. The agent connects outbound to your MeshCentral server.
-4. In MeshCentral web UI, find each device and copy its **Node ID** (shown in the device URL, e.g. `?viewid=50&id=abc123nodeId`).
-5. In CyberClub Core, associate the device:
-   ```http
-   PATCH /api/admin/workstations/{workstationId}/integration
-   X-Admin-Key: your-key
-
-   { "meshCentralDeviceId": "abc123nodeId" }
-   ```
-6. Set `Integrations:MeshCentral:BaseUrl` in `appsettings.json` to your MeshCentral server URL.
-7. Retrieve the remote link for any workstation:
-   ```http
-   GET /api/admin/workstations/{workstationId}/remote-link
-   X-Admin-Key: your-key
-   ```
-
-### Remote link template
-
-The URL template is configurable in `appsettings.json`:
 ```
-Integrations:MeshCentral:RemoteLinkTemplate = {BaseUrl}/?viewid=50&id={DeviceId}
-```
-Placeholders `{BaseUrl}` and `{DeviceId}` are replaced at runtime. Adjust if MeshCentral's deep-link format changes.
-
----
-
-## FOG Project Integration (Placeholder)
-
-FOG is used for PXE imaging / cloning of club PCs. Core stores metadata but does **not** call the FOG API yet.
-
-| Field | Description |
-|-------|-------------|
-| `FogHostId` | FOG host ID for this workstation |
-| `ImageGroup` | Image group name (e.g. `Hall1-Standard`) |
-
-To mark a workstation for reimaging (operator workflow):
-```http
-POST /api/admin/workstations/{id}/mark-for-reimage
-X-Admin-Key: your-key
-
-{ "issuedBy": "admin", "notes": "Disk issue reported" }
-```
-
-This writes a `Reimage` audit log entry. The operator then manually triggers the task in the FOG web console for the listed hosts.
-
----
-
-## ERPNext / POS Integration (Placeholder)
-
-ERPNext handles bar/shop sales. Receipts can be linked to a Core workstation or session for reporting:
-
-```http
-POST /api/admin/external-receipts/link
-X-Admin-Key: your-key
-
-{
-  "source": "erpnext",
-  "receiptNo": "POS-2026-0001",
-  "amount": 1500.00,
-  "currency": "KZT",
-  "workstationId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-}
+Cashier                  Server                 Agent (PC)
+  │                        │                        │
+  │── POST /sessions/start ──>                      │
+  │    (tariffPlanId, amount,                       │
+  │     customerId / guestName)                     │
+  │                        │                        │
+  │                        │── Creates Sale record  │
+  │                        │── Creates Session      │
+  │                        │   (endsAt = now+60min) │
+  │                        │                        │
+  │                        │── ReceiveCommand(Unlock) ──>
+  │                        │── ReceiveSessionUpdate  ──>
+  │                        │   (SessionStarted,      │
+  │                        │    endsAt)              │
+  │<── 201 Session ────────│                        │
+  │                        │                [PC Unlocked]
+  │                        │                [Countdown shown]
+  │                        │                        │
+  │          ... user plays for 1 hour ...          │
+  │                        │                        │
+  │         [SessionExpiryService fires]            │
+  │                        │── ReceiveSessionUpdate ──>
+  │                        │   (SessionEnded)        │
+  │                        │── ReceiveCommand(Lock) ──>
+  │                        │── ReceiveCommand(Reboot) ->
+  │                        │                [PC Reboots]
+  │                        │                [Locked again]
 ```
 
 ---
@@ -305,8 +375,44 @@ Tables (managed by EF Core migrations):
 
 - **Workstations** – registered workstations, state, lastSeen, integration fields
 - **AgentHeartbeats** – periodic heartbeat records (CPU, RAM, state)
-- **CommandLogs** – audit log of all commands issued (including `Reimage` entries)
-- **ExternalReceipts** – external receipts from POS/ERPNext linked to workstations/sessions
+- **CommandLogs** – audit log of all commands issued
+- **ExternalReceipts** – external receipts from POS/ERPNext
+- **Customers** – customer accounts (username / phone)
+- **TariffPlans** – tariff plans (Hourly / Monthly), admin-configurable
+- **Sales** – payment records (cash / card / other)
+- **Sessions** – active/ended sessions tied to workstation, customer, tariff, and sale
+- **Subscriptions** – monthly subscriptions tied to customer
+
+---
+
+## MeshCentral Integration
+
+### How MeshCentral uses TCP
+
+MeshCentral agents connect to the MeshCentral server via **TCP over HTTPS/WebSocket (port 443 by default)**. This is standard TCP — just wrapped in a secure web transport that works reliably through NAT and firewalls.
+
+- Default port: **443/TCP** (HTTPS/WSS)
+- Optional alternate port: **4443/TCP** (configurable in MeshCentral config)
+
+### Setup steps
+
+1. Install MeshCentral on your server (see [MeshCentral docs](https://github.com/Ylianst/MeshCentral)).
+2. Open port **443/TCP** in your firewall.
+3. Install the MeshCentral agent on each club PC.
+4. In MeshCentral web UI, find each device and copy its **Node ID**.
+5. In CyberClub Core, associate the device:
+   ```http
+   PATCH /api/admin/workstations/{workstationId}/integration
+   X-Admin-Key: your-key
+
+   { "meshCentralDeviceId": "abc123nodeId" }
+   ```
+6. Set `Integrations:MeshCentral:BaseUrl` in `appsettings.json`.
+7. Retrieve the remote link:
+   ```http
+   GET /api/admin/workstations/{workstationId}/remote-link
+   X-Admin-Key: your-key
+   ```
 
 ---
 
@@ -325,7 +431,7 @@ sc start "CyberClub Agent"
 
 ### Locker UI
 
-The UI should be launched at Windows startup for the target user (via GPO or registry autorun). It will show a full-screen lock screen when the station is locked.
+The UI should be launched at Windows startup for the target user (via GPO or registry autorun). It will show a full-screen lock screen when the station is locked, and a countdown timer when a session is active.
 
 ---
 
@@ -335,6 +441,9 @@ The UI should be launched at Windows startup for the target user (via GPO or reg
 - SignalR agents join a group named by their `workstationId` for targeted commands.
 - The lock/unlock signal between service and UI uses a named Windows Event (`Global\CyberClub_Unlock`).
 - The locker UI disables the close button and suppresses Alt+F4 / Win key.
+- Session expiry is enforced by both the server (background service) and the agent (local timer) for reliability.
+- Time is sold in fixed increments (no rounding). Extension always adds from the current `endsAt`.
+- Payment is always collected before the session starts.
 
 ---
 
@@ -349,5 +458,5 @@ The UI should be launched at Windows startup for the target user (via GPO or reg
 | Scaling | Add Redis SignalR backplane for multi-instance deployments (400+ PCs) |
 | Logging | Integrate Serilog + Seq/Loki for centralized log management |
 | Monitoring | Add Prometheus metrics endpoint for fleet health |
-| MeshCentral | Deploy on same LAN; open 443/TCP; use MeshCentral Router for raw TCP tunneling |
+| MeshCentral | Deploy on same LAN; open 443/TCP; use split-DNS for internal/external access |
 
