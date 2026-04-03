@@ -14,6 +14,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<ClubSettings> ClubSettings => Set<ClubSettings>();
+    public DbSet<MapLayout> MapLayouts => Set<MapLayout>();
+    public DbSet<MapItem> MapItems => Set<MapItem>();
+    public DbSet<Zone> Zones => Set<Zone>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -126,6 +130,42 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany()
              .HasForeignKey(s => s.TariffPlanId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ClubSettings>(b =>
+        {
+            b.HasKey(s => s.Id);
+            b.Property(s => s.ActionMenuMode).HasMaxLength(32);
+        });
+
+        modelBuilder.Entity<MapLayout>(b =>
+        {
+            b.HasKey(l => l.Id);
+            b.Property(l => l.Name).HasMaxLength(128);
+            b.HasMany(l => l.Items)
+             .WithOne(i => i.Layout)
+             .HasForeignKey(i => i.LayoutId)
+             .OnDelete(DeleteBehavior.Cascade);
+            b.HasMany(l => l.Zones)
+             .WithOne(z => z.Layout)
+             .HasForeignKey(z => z.LayoutId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MapItem>(b =>
+        {
+            b.HasKey(i => i.Id);
+            b.Property(i => i.Type).HasMaxLength(32);
+            b.Property(i => i.Label).HasMaxLength(128);
+            b.Property(i => i.MetaJson).HasColumnType("longtext");
+        });
+
+        modelBuilder.Entity<Zone>(b =>
+        {
+            b.HasKey(z => z.Id);
+            b.Property(z => z.Name).HasMaxLength(128);
+            b.Property(z => z.Color).HasMaxLength(32);
+            b.Property(z => z.MetaJson).HasColumnType("longtext");
         });
     }
 }

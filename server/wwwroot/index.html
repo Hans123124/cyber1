@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CyberClub Admin</title>
+<link rel="stylesheet" href="admin.css"/>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="logo">⚡ CyberClub</div>
+  <a href="index.html" class="nav-item active">🗺 Map</a>
+  <a href="configuration.html" class="nav-item">⚙️ Configuration</a>
+  <a href="workstations.html" class="nav-item">🖥 Workstations</a>
+</nav>
+
+<main class="main-content">
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="page-title">Floor Map</span>
+      <button class="btn btn-sm" id="btn-save">💾 Save</button>
+      <button class="btn btn-sm btn-secondary" id="btn-zoom-in">＋</button>
+      <button class="btn btn-sm btn-secondary" id="btn-zoom-out">－</button>
+      <button class="btn btn-sm btn-secondary" id="btn-zoom-reset">⤢</button>
+    </div>
+    <div class="topbar-right">
+      <label class="inline-label">Admin Key:
+        <input type="password" id="admin-key-input" placeholder="X-Admin-Key" size="18"/>
+      </label>
+    </div>
+  </div>
+
+  <!-- Canvas area -->
+  <div class="canvas-wrapper" id="canvas-wrapper">
+    <canvas id="map-canvas"></canvas>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar" id="status-bar">Loading…</div>
+</main>
+
+<!-- Right panel -->
+<aside class="right-panel">
+  <div class="panel-tabs">
+    <button class="tab-btn active" data-tab="settings">Settings</button>
+    <button class="tab-btn" data-tab="elements">Elements</button>
+    <button class="tab-btn" data-tab="zones">Zones</button>
+  </div>
+
+  <!-- Settings tab -->
+  <div class="tab-content active" id="tab-settings">
+    <div class="panel-section">
+      <h3>Map Settings</h3>
+      <label>Grid size (px)
+        <input type="number" id="cfg-grid-size" value="40" min="20" max="120" step="10"/>
+      </label>
+      <label>Canvas width (px)
+        <input type="number" id="cfg-width" value="1200" min="400" max="4000" step="40"/>
+      </label>
+      <label>Canvas height (px)
+        <input type="number" id="cfg-height" value="800" min="300" max="3000" step="40"/>
+      </label>
+      <button class="btn" id="btn-apply-map">Apply</button>
+    </div>
+  </div>
+
+  <!-- Elements tab -->
+  <div class="tab-content" id="tab-elements">
+    <div class="panel-section">
+      <h3>Drag to place</h3>
+      <div class="element-grid" id="element-palette"></div>
+    </div>
+    <div class="panel-section" id="selected-panel" style="display:none">
+      <h3>Selected</h3>
+      <label>Label <input type="text" id="sel-label"/></label>
+      <label>Rotation
+        <select id="sel-rotation">
+          <option value="0">0°</option>
+          <option value="90">90°</option>
+          <option value="180">180°</option>
+          <option value="270">270°</option>
+        </select>
+      </label>
+      <label>Workstation
+        <select id="sel-workstation">
+          <option value="">— none —</option>
+        </select>
+      </label>
+      <div class="btn-row">
+        <button class="btn" id="btn-sel-save">Save</button>
+        <button class="btn btn-danger" id="btn-sel-delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zones tab -->
+  <div class="tab-content" id="tab-zones">
+    <div class="panel-section">
+      <h3>Add Zone</h3>
+      <label>Name <input type="text" id="zone-name" placeholder="VIP Zone"/></label>
+      <label>Color <input type="color" id="zone-color" value="#3b82f6"/></label>
+      <button class="btn" id="btn-add-zone">+ Add Zone (draw on map)</button>
+    </div>
+    <div class="panel-section">
+      <h3>Zones</h3>
+      <ul class="zone-list" id="zone-list"></ul>
+    </div>
+  </div>
+</aside>
+
+<!-- Context menu -->
+<div class="context-menu" id="ctx-menu" style="display:none">
+  <div class="ctx-item" data-action="lock">🔒 Lock</div>
+  <div class="ctx-item" data-action="unlock">🔓 Unlock</div>
+  <div class="ctx-item" data-action="reboot">🔄 Reboot</div>
+  <div class="ctx-item" data-action="shutdown">⏻ Shutdown</div>
+  <hr/>
+  <div class="ctx-item" data-action="delete">🗑 Remove from map</div>
+</div>
+
+<script src="map.js"></script>
+</body>
+</html>

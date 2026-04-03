@@ -57,6 +57,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Serve admin web UI from wwwroot (index.html, map.html, etc.)
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseMiddleware<AdminKeyMiddleware>();
 app.MapControllers();
 app.MapHub<AgentHub>("/hubs/agent");
