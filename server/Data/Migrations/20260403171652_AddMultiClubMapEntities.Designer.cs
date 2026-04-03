@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CyberServer.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260403170256_AddMapAndSettings")]
-    partial class AddMapAndSettings
+    [Migration("20260403171652_AddMultiClubMapEntities")]
+    partial class AddMultiClubMapEntities
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -65,35 +65,52 @@ namespace CyberServer.Data.Migrations
                     b.ToTable("AgentHeartbeats");
                 });
 
+            modelBuilder.Entity("CyberServer.Domain.Club", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Clubs");
+                });
+
             modelBuilder.Entity("CyberServer.Domain.ClubSettings", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<int?>("AutoRestartAfterSessionSeconds")
                         .HasColumnType("int");
 
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ActionMenuMode")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.Property<int>("AutoRestartAfterSessionSeconds")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("AutoRestartEnabled")
-                        .HasColumnType("tinyint(1)");
+                    b.Property<Guid>("ClubId")
+                        .HasColumnType("char(36)");
 
                     b.Property<bool>("ShowGamerNameOnMap")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<int>("ShutdownIdlePcSeconds")
+                    b.Property<int?>("ShutdownIdlePcSeconds")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
+                    b.Property<int>("SinglePcActionMenuMode")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClubId")
+                        .IsUnique();
 
                     b.ToTable("ClubSettings");
                 });
@@ -215,14 +232,10 @@ namespace CyberServer.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<int>("H")
                         .HasColumnType("int");
 
                     b.Property<string>("Label")
-                        .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
@@ -235,13 +248,8 @@ namespace CyberServer.Data.Migrations
                     b.Property<int>("Rotation")
                         .HasColumnType("int");
 
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
 
                     b.Property<int>("W")
                         .HasColumnType("int");
@@ -262,6 +270,10 @@ namespace CyberServer.Data.Migrations
 
                     b.HasIndex("LayoutId");
 
+                    b.HasIndex("WorkstationId");
+
+                    b.HasIndex("ZoneId");
+
                     b.ToTable("MapItems");
                 });
 
@@ -271,13 +283,19 @@ namespace CyberServer.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid>("ClubId")
+                        .HasColumnType("char(36)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<int>("GridSize")
+                    b.Property<int>("GridCellSizePx")
                         .HasColumnType("int");
 
-                    b.Property<int>("Height")
+                    b.Property<int>("GridHeight")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GridWidth")
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
@@ -285,13 +303,9 @@ namespace CyberServer.Data.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Width")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
+
+                    b.HasIndex("ClubId");
 
                     b.ToTable("MapLayouts");
                 });
@@ -457,6 +471,9 @@ namespace CyberServer.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
+                    b.Property<Guid?>("ClubId")
+                        .HasColumnType("char(36)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -504,6 +521,8 @@ namespace CyberServer.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ClubId");
+
                     b.HasIndex("MachineFingerprint")
                         .IsUnique();
 
@@ -521,25 +540,16 @@ namespace CyberServer.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<int>("H")
                         .HasColumnType("int");
 
                     b.Property<Guid>("LayoutId")
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("MetaJson")
-                        .HasColumnType("longtext");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("W")
                         .HasColumnType("int");
@@ -568,6 +578,17 @@ namespace CyberServer.Data.Migrations
                     b.Navigation("Workstation");
                 });
 
+            modelBuilder.Entity("CyberServer.Domain.ClubSettings", b =>
+                {
+                    b.HasOne("CyberServer.Domain.Club", "Club")
+                        .WithOne("Settings")
+                        .HasForeignKey("CyberServer.Domain.ClubSettings", "ClubId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Club");
+                });
+
             modelBuilder.Entity("CyberServer.Domain.CommandLog", b =>
                 {
                     b.HasOne("CyberServer.Domain.Workstation", "Workstation")
@@ -587,7 +608,32 @@ namespace CyberServer.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("CyberServer.Domain.Workstation", "Workstation")
+                        .WithMany()
+                        .HasForeignKey("WorkstationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CyberServer.Domain.Zone", "Zone")
+                        .WithMany("Items")
+                        .HasForeignKey("ZoneId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Layout");
+
+                    b.Navigation("Workstation");
+
+                    b.Navigation("Zone");
+                });
+
+            modelBuilder.Entity("CyberServer.Domain.MapLayout", b =>
+                {
+                    b.HasOne("CyberServer.Domain.Club", "Club")
+                        .WithMany("Layouts")
+                        .HasForeignKey("ClubId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Club");
                 });
 
             modelBuilder.Entity("CyberServer.Domain.Session", b =>
@@ -643,6 +689,16 @@ namespace CyberServer.Data.Migrations
                     b.Navigation("TariffPlan");
                 });
 
+            modelBuilder.Entity("CyberServer.Domain.Workstation", b =>
+                {
+                    b.HasOne("CyberServer.Domain.Club", "Club")
+                        .WithMany("Workstations")
+                        .HasForeignKey("ClubId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Club");
+                });
+
             modelBuilder.Entity("CyberServer.Domain.Zone", b =>
                 {
                     b.HasOne("CyberServer.Domain.MapLayout", "Layout")
@@ -652,6 +708,15 @@ namespace CyberServer.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Layout");
+                });
+
+            modelBuilder.Entity("CyberServer.Domain.Club", b =>
+                {
+                    b.Navigation("Layouts");
+
+                    b.Navigation("Settings");
+
+                    b.Navigation("Workstations");
                 });
 
             modelBuilder.Entity("CyberServer.Domain.Customer", b =>
@@ -678,6 +743,11 @@ namespace CyberServer.Data.Migrations
                     b.Navigation("Commands");
 
                     b.Navigation("Heartbeats");
+                });
+
+            modelBuilder.Entity("CyberServer.Domain.Zone", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

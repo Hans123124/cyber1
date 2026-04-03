@@ -33,7 +33,8 @@ public record WorkstationDto(
     string IpAddress,
     string? MeshCentralDeviceId,
     string? FogHostId,
-    string? ImageGroup);
+    string? ImageGroup,
+    Guid? ClubId);
 
 public record SendCommandRequest(
     CommandType Command,
@@ -167,4 +168,125 @@ public record SaleDto(
     string Currency,
     string Method,
     string? OperatorName);
+
+// ── Clubs ─────────────────────────────────────────────────────────────────────
+
+public record ClubDto(
+    Guid Id,
+    string Name,
+    DateTime CreatedAt);
+
+public record CreateClubRequest(string Name);
+
+public record UpdateClubRequest(string Name);
+
+// ── Club Settings ─────────────────────────────────────────────────────────────
+
+public record ClubSettingsDto(
+    Guid ClubId,
+    int? ShutdownIdlePcSeconds,
+    int? AutoRestartAfterSessionSeconds,
+    bool ShowGamerNameOnMap,
+    string SinglePcActionMenuMode);
+
+public record UpdateClubSettingsRequest(
+    int? ShutdownIdlePcSeconds,
+    int? AutoRestartAfterSessionSeconds,
+    bool ShowGamerNameOnMap,
+    string SinglePcActionMenuMode);
+
+// ── Map Layouts ───────────────────────────────────────────────────────────────
+
+public record MapLayoutDto(
+    Guid Id,
+    Guid ClubId,
+    string Name,
+    int GridWidth,
+    int GridHeight,
+    int GridCellSizePx,
+    DateTime CreatedAt);
+
+public record CreateMapLayoutRequest(
+    string Name,
+    int GridWidth = 30,
+    int GridHeight = 20,
+    int GridCellSizePx = 40);
+
+public record UpdateMapLayoutRequest(
+    string? Name,
+    int? GridWidth,
+    int? GridHeight,
+    int? GridCellSizePx);
+
+// ── Map Items ─────────────────────────────────────────────────────────────────
+
+public record MapItemDto(
+    Guid Id,
+    Guid LayoutId,
+    string Type,
+    int X,
+    int Y,
+    int W,
+    int H,
+    int Rotation,
+    string? Label,
+    Guid? WorkstationId,
+    Guid? ZoneId,
+    string? MetaJson);
+
+public record CreateMapItemRequest(
+    string Type,
+    int X,
+    int Y,
+    int W = 1,
+    int H = 1,
+    int Rotation = 0,
+    string? Label = null,
+    Guid? WorkstationId = null,
+    Guid? ZoneId = null,
+    string? MetaJson = null);
+
+public record UpdateMapItemRequest(
+    string? Type,
+    int? X,
+    int? Y,
+    int? W,
+    int? H,
+    int? Rotation,
+    string? Label,
+    Guid? WorkstationId,
+    Guid? ZoneId,
+    string? MetaJson);
+
+// ── Zones ─────────────────────────────────────────────────────────────────────
+
+public record ZoneDto(
+    Guid Id,
+    Guid LayoutId,
+    string Name,
+    string Color,
+    int X,
+    int Y,
+    int W,
+    int H);
+
+public record CreateZoneRequest(
+    string Name,
+    string Color = "#4A90D9",
+    int X = 0,
+    int Y = 0,
+    int W = 4,
+    int H = 3);
+
+public record UpdateZoneRequest(
+    string? Name,
+    string? Color,
+    int? X,
+    int? Y,
+    int? W,
+    int? H);
+
+// ── Workstation (extended) ────────────────────────────────────────────────────
+
+public record AssignWorkstationClubRequest(Guid? ClubId);
 
