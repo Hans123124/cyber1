@@ -186,6 +186,6 @@ public class SessionService(
         {
             TariffType.Hourly => from.AddMinutes(tariff.DurationMinutes ?? 60),
             TariffType.Monthly => from.AddDays(tariff.DurationDays ?? 30),
-            _ => from.AddMinutes(60)
+            _ => throw new InvalidOperationException($"Unsupported tariff type: {tariff.Type}")
         };
 }

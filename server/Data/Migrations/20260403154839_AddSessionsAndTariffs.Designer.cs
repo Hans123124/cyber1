@@ -246,7 +246,7 @@ namespace CyberServer.Data.Migrations
 
                     b.HasIndex("SaleId");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("Status", "EndsAt");
 
                     b.HasIndex("TariffPlanId");
 

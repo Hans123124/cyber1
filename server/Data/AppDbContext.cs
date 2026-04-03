@@ -111,7 +111,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .OnDelete(DeleteBehavior.Restrict);
             b.Property(s => s.GuestName).HasMaxLength(128);
             b.HasIndex(s => s.WorkstationId);
-            b.HasIndex(s => s.Status);
+            // Composite index for expiry service query (Status, EndsAt)
+            b.HasIndex(s => new { s.Status, s.EndsAt });
         });
 
         modelBuilder.Entity<Subscription>(b =>

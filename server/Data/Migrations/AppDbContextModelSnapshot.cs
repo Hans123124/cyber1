@@ -243,11 +243,11 @@ namespace CyberServer.Data.Migrations
 
                     b.HasIndex("SaleId");
 
-                    b.HasIndex("Status");
-
                     b.HasIndex("TariffPlanId");
 
                     b.HasIndex("WorkstationId");
+
+                    b.HasIndex("Status", "EndsAt");
 
                     b.ToTable("Sessions");
                 });

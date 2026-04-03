@@ -166,9 +166,9 @@ namespace CyberServer.Data.Migrations
                 column: "SaleId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Sessions_Status",
+                name: "IX_Sessions_Status_EndsAt",
                 table: "Sessions",
-                column: "Status");
+                columns: new[] { "Status", "EndsAt" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Sessions_TariffPlanId",

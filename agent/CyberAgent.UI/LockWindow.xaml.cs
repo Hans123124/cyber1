@@ -45,7 +45,7 @@ public partial class LockWindow : Window
 
         if (_unlocked && _sessionEndsAt.HasValue)
         {
-            var remaining = _sessionEndsAt.Value.ToLocalTime() - DateTime.Now;
+            var remaining = _sessionEndsAt.Value - DateTime.UtcNow;
             if (remaining > TimeSpan.Zero)
             {
                 CountdownText.Text = $"Time remaining: {remaining:hh\\:mm\\:ss}";
