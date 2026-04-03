@@ -18,6 +18,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IWorkstationService, WorkstationService>();
 builder.Services.AddScoped<ICommandService, CommandService>();
+builder.Services.AddScoped<ITariffService, TariffService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddHostedService<SessionExpiryService>();
 
 // ── SignalR ───────────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
