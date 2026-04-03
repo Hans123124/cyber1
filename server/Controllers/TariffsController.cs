@@ -12,9 +12,12 @@ namespace CyberServer.Controllers;
 public class TariffsController(ITariffService tariffService) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] bool includeInactive = false, CancellationToken ct = default)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] bool includeInactive = false,
+        [FromQuery] Guid? clubId = null,
+        CancellationToken ct = default)
     {
-        var plans = await tariffService.GetAllAsync(includeInactive, ct);
+        var plans = await tariffService.GetAllAsync(includeInactive, clubId, ct);
         return Ok(plans.Select(ToDto));
     }
 
@@ -26,18 +29,26 @@ public class TariffsController(ITariffService tariffService) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "SuperAdmin,Admin")]
     public async Task<IActionResult> Create([FromBody] CreateTariffPlanRequest request, CancellationToken ct = default)
     {
-        if (request.Type == TariffType.Hourly && (request.DurationMinutes is null or <= 0))
-            return BadRequest("DurationMinutes is required and must be positive for Hourly plans.");
-        if (request.Type == TariffType.Monthly && (request.DurationDays is null or <= 0))
-            return BadRequest("DurationDays is required and must be positive for Monthly plans.");
+        if (request.Type == TariffType.Hourly)
+        {
+            if (request.HourlyRateMdl <= 0)
+                return BadRequest("HourlyRateMdl must be positive for Hourly plans.");
+        }
+        else if (request.Type == TariffType.Monthly)
+        {
+            if (request.DurationDays is null or <= 0)
+                return BadRequest("DurationDays is required and must be positive for Monthly plans.");
+        }
 
         var plan = await tariffService.CreateAsync(request, ct);
         return CreatedAtAction(nameof(GetById), new { id = plan.Id }, ToDto(plan));
     }
 
     [HttpPatch("{id:guid}")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTariffPlanRequest request, CancellationToken ct = default)
     {
         var plan = await tariffService.UpdateAsync(id, request, ct);
@@ -45,6 +56,7 @@ public class TariffsController(ITariffService tariffService) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "SuperAdmin,Admin")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
     {
         var deleted = await tariffService.DeleteAsync(id, ct);
@@ -52,5 +64,5 @@ public class TariffsController(ITariffService tariffService) : ControllerBase
     }
 
     private static TariffPlanDto ToDto(TariffPlan p) => new(
-        p.Id, p.Name, p.Type.ToString(), p.DurationMinutes, p.DurationDays, p.Price, p.IsActive, p.SortOrder);
+        p.Id, p.ClubId, p.Name, p.Type.ToString(), p.HourlyRateMdl, p.DurationMinutes, p.DurationDays, p.Price, p.IsActive, p.SortOrder);
 }

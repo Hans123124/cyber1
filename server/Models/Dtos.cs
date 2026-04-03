@@ -89,8 +89,10 @@ public record ExternalReceiptDto(
 
 public record TariffPlanDto(
     Guid Id,
+    Guid? ClubId,
     string Name,
     string Type,
+    decimal HourlyRateMdl,
     int? DurationMinutes,
     int? DurationDays,
     decimal Price,
@@ -100,14 +102,17 @@ public record TariffPlanDto(
 public record CreateTariffPlanRequest(
     string Name,
     TariffType Type,
+    decimal HourlyRateMdl,
     int? DurationMinutes,
     int? DurationDays,
-    decimal Price,
+    decimal Price = 0,
     bool IsActive = true,
-    int SortOrder = 0);
+    int SortOrder = 0,
+    Guid? ClubId = null);
 
 public record UpdateTariffPlanRequest(
     string? Name,
+    decimal? HourlyRateMdl,
     int? DurationMinutes,
     int? DurationDays,
     decimal? Price,
@@ -132,17 +137,15 @@ public record CreateCustomerRequest(
 public record StartSessionRequest(
     Guid WorkstationId,
     Guid TariffPlanId,
+    int DurationHours,
     Guid? CustomerId,
     string? GuestName,
-    decimal Amount,
-    string Currency = "KZT",
     PaymentMethod PaymentMethod = PaymentMethod.Cash,
     string OperatorName = "admin");
 
 public record ExtendSessionRequest(
     Guid TariffPlanId,
-    decimal Amount,
-    string Currency = "KZT",
+    int DurationHours,
     PaymentMethod PaymentMethod = PaymentMethod.Cash,
     string OperatorName = "admin");
 

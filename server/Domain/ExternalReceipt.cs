@@ -6,7 +6,7 @@ public class ExternalReceipt
     public string Source { get; set; } = string.Empty;
     public string ReceiptNo { get; set; } = string.Empty;
     public decimal Amount { get; set; }
-    public string Currency { get; set; } = "KZT";
+    public string Currency { get; set; } = "MDL";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>Nullable link to a Core session or workstation context.</summary>
