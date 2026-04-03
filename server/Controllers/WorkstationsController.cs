@@ -1,7 +1,9 @@
+using CyberServer.Data;
 using CyberServer.Domain;
 using CyberServer.Models;
 using CyberServer.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CyberServer.Controllers;
 
@@ -11,7 +13,11 @@ namespace CyberServer.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/workstations")]
-public class WorkstationsController(IWorkstationService workstationService, ICommandService commandService) : ControllerBase
+public class WorkstationsController(
+    IWorkstationService workstationService,
+    ICommandService commandService,
+    AppDbContext db,
+    IConfiguration config) : ControllerBase
 {
     /// <summary>
     /// GET /api/admin/workstations
@@ -71,8 +77,88 @@ public class WorkstationsController(IWorkstationService workstationService, ICom
         return Ok(logs.Select(ToLogDto));
     }
 
+    /// <summary>
+    /// PATCH /api/admin/workstations/{id}/integration
+    /// Sets MeshCentralDeviceId, FogHostId, and/or ImageGroup for a workstation.
+    /// </summary>
+    [HttpPatch("{id:guid}/integration")]
+    public async Task<ActionResult<WorkstationDto>> UpdateIntegration(
+        Guid id,
+        [FromBody] UpdateIntegrationRequest request,
+        CancellationToken ct)
+    {
+        var workstation = await db.Workstations.FindAsync([id], ct);
+        if (workstation is null) return NotFound();
+
+        workstation.MeshCentralDeviceId = request.MeshCentralDeviceId;
+        workstation.FogHostId = request.FogHostId;
+        workstation.ImageGroup = request.ImageGroup;
+        await db.SaveChangesAsync(ct);
+
+        return Ok(ToDto(workstation));
+    }
+
+    /// <summary>
+    /// GET /api/admin/workstations/{id}/remote-link
+    /// Returns a URL to open the workstation in MeshCentral.
+    /// The URL template is configured via Integrations:MeshCentral:RemoteLinkTemplate in appsettings.json.
+    /// Default template: {BaseUrl}/?viewid=50&amp;id={DeviceId}
+    /// </summary>
+    [HttpGet("{id:guid}/remote-link")]
+    public async Task<ActionResult<RemoteLinkResponse>> GetRemoteLink(Guid id, CancellationToken ct)
+    {
+        var workstation = await db.Workstations.FindAsync([id], ct);
+        if (workstation is null) return NotFound();
+
+        var baseUrl = config["Integrations:MeshCentral:BaseUrl"] ?? string.Empty;
+        var template = config["Integrations:MeshCentral:RemoteLinkTemplate"]
+                       ?? "{BaseUrl}/?viewid=50&id={DeviceId}";
+
+        string? remoteUrl = null;
+        string note;
+
+        if (string.IsNullOrWhiteSpace(workstation.MeshCentralDeviceId))
+        {
+            note = "MeshCentralDeviceId is not set for this workstation. " +
+                   "Use PATCH /integration to assign it.";
+        }
+        else if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            note = "Integrations:MeshCentral:BaseUrl is not configured in appsettings.json.";
+        }
+        else
+        {
+            remoteUrl = template
+                .Replace("{BaseUrl}", baseUrl.TrimEnd('/'))
+                .Replace("{DeviceId}", workstation.MeshCentralDeviceId);
+            note = "MeshCentral uses TCP over HTTPS/WebSocket (port 443). " +
+                   "For raw TCP port mapping, configure MeshCentral Router on the server.";
+        }
+
+        return Ok(new RemoteLinkResponse(workstation.Id, workstation.MeshCentralDeviceId, remoteUrl, note));
+    }
+
+    /// <summary>
+    /// POST /api/admin/workstations/{id}/mark-for-reimage
+    /// Marks a workstation for reimaging. Writes an audit log entry; no FOG API calls are made.
+    /// </summary>
+    [HttpPost("{id:guid}/mark-for-reimage")]
+    public async Task<IActionResult> MarkForReimage(
+        Guid id,
+        [FromBody] MarkForReimageRequest request,
+        CancellationToken ct)
+    {
+        var workstation = await workstationService.GetByIdAsync(id, ct);
+        if (workstation is null) return NotFound();
+
+        var notes = $"[REIMAGE] {request.Notes}".TrimEnd();
+        await commandService.SendCommandAsync(id, CommandType.Reimage, request.IssuedBy, notes, ct);
+        return Accepted(new { message = "Workstation marked for reimage. Audit log entry created.", workstationId = id });
+    }
+
     private static WorkstationDto ToDto(Domain.Workstation w) => new(
-        w.Id, w.Name, w.State, w.IsOnline, w.LastSeenAt, w.AgentVersion, w.IpAddress);
+        w.Id, w.Name, w.State, w.IsOnline, w.LastSeenAt, w.AgentVersion, w.IpAddress,
+        w.MeshCentralDeviceId, w.FogHostId, w.ImageGroup);
 
     private static CommandLogDto ToLogDto(CommandLog c) => new(
         c.Id, c.WorkstationId, c.Command.ToString(), c.IssuedBy, c.Status.ToString(), c.Notes, c.IssuedAt, c.DeliveredAt);

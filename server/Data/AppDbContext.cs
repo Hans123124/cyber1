@@ -8,6 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Workstation> Workstations => Set<Workstation>();
     public DbSet<AgentHeartbeat> AgentHeartbeats => Set<AgentHeartbeat>();
     public DbSet<CommandLog> CommandLogs => Set<CommandLog>();
+    public DbSet<ExternalReceipt> ExternalReceipts => Set<ExternalReceipt>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,6 +23,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(w => w.OsVersion).HasMaxLength(128);
             b.Property(w => w.IpAddress).HasMaxLength(64);
             b.Property(w => w.SecretHash).HasMaxLength(256);
+            b.Property(w => w.MeshCentralDeviceId).HasMaxLength(256);
+            b.Property(w => w.FogHostId).HasMaxLength(128);
+            b.Property(w => w.ImageGroup).HasMaxLength(128);
         });
 
         modelBuilder.Entity<AgentHeartbeat>(b =>
@@ -44,6 +48,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .OnDelete(DeleteBehavior.Cascade);
             b.Property(c => c.IssuedBy).HasMaxLength(128);
             b.Property(c => c.Notes).HasMaxLength(512);
+        });
+
+        modelBuilder.Entity<ExternalReceipt>(b =>
+        {
+            b.HasKey(r => r.Id);
+            b.Property(r => r.Source).HasMaxLength(64);
+            b.Property(r => r.ReceiptNo).HasMaxLength(128);
+            b.Property(r => r.Currency).HasMaxLength(8);
+            b.Property(r => r.Amount).HasPrecision(18, 4);
+            b.Property(r => r.SessionId).HasMaxLength(256);
+            b.Property(r => r.RawJson).HasColumnType("longtext");
         });
     }
 }

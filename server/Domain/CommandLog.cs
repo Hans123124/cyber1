@@ -19,7 +19,8 @@ public enum CommandType
     Unlock,
     Reboot,
     Shutdown,
-    Message
+    Message,
+    Reimage
 }
 
 public enum CommandStatus

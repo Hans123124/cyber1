@@ -13,6 +13,11 @@ public class Workstation
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime LastSeenAt { get; set; } = DateTime.UtcNow;
 
+    // Integration fields
+    public string? MeshCentralDeviceId { get; set; }
+    public string? FogHostId { get; set; }
+    public string? ImageGroup { get; set; }
+
     public bool IsOnline =>
         (DateTime.UtcNow - LastSeenAt).TotalSeconds < 60;
 
