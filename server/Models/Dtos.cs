@@ -30,7 +30,10 @@ public record WorkstationDto(
     bool IsOnline,
     DateTime LastSeenAt,
     string AgentVersion,
-    string IpAddress);
+    string IpAddress,
+    string? MeshCentralDeviceId,
+    string? FogHostId,
+    string? ImageGroup);
 
 public record SendCommandRequest(
     CommandType Command,
@@ -46,3 +49,38 @@ public record CommandLogDto(
     string? Notes,
     DateTime IssuedAt,
     DateTime? DeliveredAt);
+
+public record UpdateIntegrationRequest(
+    string? MeshCentralDeviceId,
+    string? FogHostId,
+    string? ImageGroup);
+
+public record RemoteLinkResponse(
+    Guid WorkstationId,
+    string? MeshCentralDeviceId,
+    string? RemoteUrl,
+    string Note);
+
+public record MarkForReimageRequest(
+    string IssuedBy = "admin",
+    string? Notes = null);
+
+public record LinkExternalReceiptRequest(
+    string Source,
+    string ReceiptNo,
+    decimal Amount,
+    string Currency,
+    Guid? WorkstationId,
+    string? SessionId,
+    string? RawJson);
+
+public record ExternalReceiptDto(
+    Guid Id,
+    string Source,
+    string ReceiptNo,
+    decimal Amount,
+    string Currency,
+    DateTime CreatedAt,
+    Guid? WorkstationId,
+    string? SessionId);
+

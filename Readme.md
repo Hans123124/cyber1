@@ -104,6 +104,10 @@ The agent requires Windows (WPF + Windows Service + WMI).
 | `POST` | `/api/admin/workstations/{id}/commands` | Send command to workstation |
 | `GET` | `/api/admin/workstations/{id}/commands` | Get command/audit log for workstation |
 | `GET` | `/api/admin/commands` | Get global command audit log |
+| `PATCH` | `/api/admin/workstations/{id}/integration` | Set MeshCentralDeviceId / FogHostId / ImageGroup |
+| `GET` | `/api/admin/workstations/{id}/remote-link` | Get MeshCentral remote URL for workstation |
+| `POST` | `/api/admin/workstations/{id}/mark-for-reimage` | Mark workstation for reimaging (audit log only) |
+| `POST` | `/api/admin/external-receipts/link` | Link an external receipt (ERPNext/POS) to a workstation/session |
 
 **Send command request:**
 ```json
@@ -114,7 +118,29 @@ The agent requires Windows (WPF + Windows Service + WMI).
 }
 ```
 
-Commands: `Lock`, `Unlock`, `Reboot`, `Shutdown`, `Message`
+Commands: `Lock`, `Unlock`, `Reboot`, `Shutdown`, `Message`, `Reimage`
+
+**Update integration fields:**
+```json
+{
+  "meshCentralDeviceId": "abc123nodeId",
+  "fogHostId": "42",
+  "imageGroup": "Hall1-Standard"
+}
+```
+
+**Link external receipt:**
+```json
+{
+  "source": "erpnext",
+  "receiptNo": "POS-2026-0001",
+  "amount": 1500.00,
+  "currency": "KZT",
+  "workstationId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "sessionId": "session-ref-optional",
+  "rawJson": "{\"raw\": \"payload\"}"
+}
+```
 
 ### SignalR Hub
 
@@ -157,7 +183,20 @@ Set `AdminApiKey` in `appsettings.json`. Leave empty in development (no auth).
   "ConnectionStrings": {
     "DefaultConnection": "Server=localhost;Port=3306;Database=cyberclub;User=cyberuser;Password=cyberpass;"
   },
-  "AdminApiKey": "change-me-in-production"
+  "AdminApiKey": "change-me-in-production",
+  "Integrations": {
+    "MeshCentral": {
+      "BaseUrl": "https://mesh.yourclub.local",
+      "DeviceGroupId": "",
+      "RemoteLinkTemplate": "{BaseUrl}/?viewid=50&id={DeviceId}"
+    },
+    "Fog": {
+      "BaseUrl": "http://fog.yourclub.local"
+    },
+    "ErpNext": {
+      "BaseUrl": "http://erp.yourclub.local"
+    }
+  }
 }
 ```
 
@@ -176,13 +215,98 @@ The agent reads `ServerUrl` and `WorkstationName` from this file. On first run (
 
 ---
 
+## MeshCentral Integration
+
+### How MeshCentral uses TCP
+
+MeshCentral agents connect to the MeshCentral server via **TCP over HTTPS/WebSocket (port 443 by default)**. This is standard TCP — just wrapped in a secure web transport that works reliably through NAT and firewalls.
+
+- Default port: **443/TCP** (HTTPS/WSS)
+- Optional alternate port: **4443/TCP** (configurable in MeshCentral config)
+- For **raw TCP port mapping** (e.g. RDP port forwarding, custom services): use **MeshCentral Router**, which creates an on-demand TCP tunnel via the MeshCentral server.
+
+### Setup steps
+
+1. Install MeshCentral on your server (see [MeshCentral docs](https://github.com/Ylianst/MeshCentral)):
+   ```bash
+   npm install meshcentral
+   node node_modules/meshcentral
+   ```
+2. Open port **443/TCP** (or your configured port) in your firewall.
+3. Install the MeshCentral agent on each club PC. The agent connects outbound to your MeshCentral server.
+4. In MeshCentral web UI, find each device and copy its **Node ID** (shown in the device URL, e.g. `?viewid=50&id=abc123nodeId`).
+5. In CyberClub Core, associate the device:
+   ```http
+   PATCH /api/admin/workstations/{workstationId}/integration
+   X-Admin-Key: your-key
+
+   { "meshCentralDeviceId": "abc123nodeId" }
+   ```
+6. Set `Integrations:MeshCentral:BaseUrl` in `appsettings.json` to your MeshCentral server URL.
+7. Retrieve the remote link for any workstation:
+   ```http
+   GET /api/admin/workstations/{workstationId}/remote-link
+   X-Admin-Key: your-key
+   ```
+
+### Remote link template
+
+The URL template is configurable in `appsettings.json`:
+```
+Integrations:MeshCentral:RemoteLinkTemplate = {BaseUrl}/?viewid=50&id={DeviceId}
+```
+Placeholders `{BaseUrl}` and `{DeviceId}` are replaced at runtime. Adjust if MeshCentral's deep-link format changes.
+
+---
+
+## FOG Project Integration (Placeholder)
+
+FOG is used for PXE imaging / cloning of club PCs. Core stores metadata but does **not** call the FOG API yet.
+
+| Field | Description |
+|-------|-------------|
+| `FogHostId` | FOG host ID for this workstation |
+| `ImageGroup` | Image group name (e.g. `Hall1-Standard`) |
+
+To mark a workstation for reimaging (operator workflow):
+```http
+POST /api/admin/workstations/{id}/mark-for-reimage
+X-Admin-Key: your-key
+
+{ "issuedBy": "admin", "notes": "Disk issue reported" }
+```
+
+This writes a `Reimage` audit log entry. The operator then manually triggers the task in the FOG web console for the listed hosts.
+
+---
+
+## ERPNext / POS Integration (Placeholder)
+
+ERPNext handles bar/shop sales. Receipts can be linked to a Core workstation or session for reporting:
+
+```http
+POST /api/admin/external-receipts/link
+X-Admin-Key: your-key
+
+{
+  "source": "erpnext",
+  "receiptNo": "POS-2026-0001",
+  "amount": 1500.00,
+  "currency": "KZT",
+  "workstationId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+}
+```
+
+---
+
 ## Database Schema
 
 Tables (managed by EF Core migrations):
 
-- **Workstations** – registered workstations, state, lastSeen
+- **Workstations** – registered workstations, state, lastSeen, integration fields
 - **AgentHeartbeats** – periodic heartbeat records (CPU, RAM, state)
-- **CommandLogs** – audit log of all commands issued
+- **CommandLogs** – audit log of all commands issued (including `Reimage` entries)
+- **ExternalReceipts** – external receipts from POS/ERPNext linked to workstations/sessions
 
 ---
 
@@ -225,3 +349,5 @@ The UI should be launched at Windows startup for the target user (via GPO or reg
 | Scaling | Add Redis SignalR backplane for multi-instance deployments (400+ PCs) |
 | Logging | Integrate Serilog + Seq/Loki for centralized log management |
 | Monitoring | Add Prometheus metrics endpoint for fleet health |
+| MeshCentral | Deploy on same LAN; open 443/TCP; use MeshCentral Router for raw TCP tunneling |
+
