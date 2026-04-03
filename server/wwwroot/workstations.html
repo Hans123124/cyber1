@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CyberClub – Workstations</title>
+<link rel="stylesheet" href="admin.css"/>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="logo">⚡ CyberClub</div>
+  <a href="index.html" class="nav-item">🗺 Map</a>
+  <a href="configuration.html" class="nav-item">⚙️ Configuration</a>
+  <a href="workstations.html" class="nav-item active">🖥 Workstations</a>
+</nav>
+
+<main class="main-content" style="flex:1">
+  <div class="topbar">
+    <span class="page-title">Workstations</span>
+    <div class="topbar-right">
+      <label class="inline-label">Admin Key:
+        <input type="password" id="admin-key-input" placeholder="X-Admin-Key" size="18"/>
+      </label>
+      <button class="btn btn-sm" id="btn-refresh">🔄 Refresh</button>
+    </div>
+  </div>
+
+  <div class="ws-page">
+    <table class="ws-table" id="ws-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>State</th>
+          <th>Last seen</th>
+          <th>IP</th>
+          <th>Agent ver.</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="ws-tbody">
+        <tr><td colspan="6" style="text-align:center;color:var(--muted)">Enter admin key and click Refresh</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script src="workstations.js"></script>
+</body>
+</html>

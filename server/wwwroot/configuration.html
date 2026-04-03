@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CyberClub – Configuration</title>
+<link rel="stylesheet" href="admin.css"/>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="logo">⚡ CyberClub</div>
+  <a href="index.html" class="nav-item">🗺 Map</a>
+  <a href="configuration.html" class="nav-item active">⚙️ Configuration</a>
+  <a href="workstations.html" class="nav-item">🖥 Workstations</a>
+</nav>
+
+<main class="main-content" style="flex:1">
+  <div class="topbar">
+    <span class="page-title">Configuration</span>
+    <div class="topbar-right">
+      <label class="inline-label">Admin Key:
+        <input type="password" id="admin-key-input" placeholder="X-Admin-Key" size="18"/>
+      </label>
+    </div>
+  </div>
+
+  <div class="config-page">
+    <div class="config-card">
+      <h2>PC Behaviour</h2>
+
+      <div class="field-row">
+        <label for="idle-seconds">Shutdown idle PC in (seconds, 0 = disabled)</label>
+        <input type="number" id="idle-seconds" min="0" step="60" value="0" class="num-input"/>
+      </div>
+
+      <div class="field-row toggle-row">
+        <label for="auto-restart-enabled">Auto restart PC after session</label>
+        <label class="toggle">
+          <input type="checkbox" id="auto-restart-enabled"/>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="field-row" id="auto-restart-seconds-row">
+        <label for="auto-restart-seconds">Delay before restart (seconds)</label>
+        <input type="number" id="auto-restart-seconds" min="0" step="5" value="0" class="num-input"/>
+      </div>
+    </div>
+
+    <div class="config-card">
+      <h2>Map Display</h2>
+
+      <div class="field-row toggle-row">
+        <label for="show-gamer-name">Show gamer name on map</label>
+        <label class="toggle">
+          <input type="checkbox" id="show-gamer-name" checked/>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label for="action-menu-mode">Single PC action menu</label>
+        <select id="action-menu-mode" class="select-input">
+          <option value="ContextMenu">Right-click context menu</option>
+          <option value="Buttons">Inline buttons</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="config-actions">
+      <button class="btn btn-lg" id="btn-save-config">💾 Save settings</button>
+      <span class="save-status" id="save-status"></span>
+    </div>
+  </div>
+</main>
+
+<script src="config.js"></script>
+</body>
+</html>
