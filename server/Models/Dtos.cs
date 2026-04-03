@@ -290,3 +290,24 @@ public record UpdateZoneRequest(
 
 public record AssignWorkstationClubRequest(Guid? ClubId);
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+public record LoginRequest(
+    string Email,
+    string Password,
+    bool RememberMe = false);
+
+// ── User Management ───────────────────────────────────────────────────────────
+
+public record CreateUserRequest(
+    string Email,
+    string Password,
+    string? Username,
+    string? DisplayName,
+    string? Role,
+    List<Guid>? ClubIds);
+
+public record SetRolesRequest(List<string> Roles);
+
+public record SetClubsRequest(List<Guid> ClubIds);
+

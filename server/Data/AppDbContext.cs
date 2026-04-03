@@ -1,9 +1,11 @@
 using CyberServer.Domain;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace CyberServer.Data;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<Workstation> Workstations => Set<Workstation>();
     public DbSet<AgentHeartbeat> AgentHeartbeats => Set<AgentHeartbeat>();
@@ -19,6 +21,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<MapLayout> MapLayouts => Set<MapLayout>();
     public DbSet<MapItem> MapItems => Set<MapItem>();
     public DbSet<Zone> Zones => Set<Zone>();
+    public DbSet<UserClubAccess> UserClubAccess => Set<UserClubAccess>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -198,6 +201,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(i => i.MetaJson).HasColumnType("longtext");
             b.HasIndex(i => i.LayoutId);
             b.HasIndex(i => i.WorkstationId);
+        });
+
+        modelBuilder.Entity<UserClubAccess>(b =>
+        {
+            b.HasKey(u => u.Id);
+            b.HasOne(u => u.User)
+             .WithMany(u => u.ClubAccess)
+             .HasForeignKey(u => u.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(u => u.Club)
+             .WithMany()
+             .HasForeignKey(u => u.ClubId)
+             .OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(u => new { u.UserId, u.ClubId }).IsUnique();
         });
     }
 }

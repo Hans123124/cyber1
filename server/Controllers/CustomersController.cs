@@ -1,12 +1,14 @@
 using CyberServer.Domain;
 using CyberServer.Models;
 using CyberServer.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CyberServer.Controllers;
 
 [ApiController]
 [Route("api/admin/customers")]
+[Authorize]
 public class CustomersController(ICustomerService customerService) : ControllerBase
 {
     [HttpGet]

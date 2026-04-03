@@ -1,12 +1,14 @@
 using CyberServer.Domain;
 using CyberServer.Models;
 using CyberServer.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CyberServer.Controllers;
 
 [ApiController]
 [Route("api/admin/sessions")]
+[Authorize]
 public class SessionsController(ISessionService sessionService) : ControllerBase
 {
     [HttpGet]
