@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="CyberAgent.Service/CyberAgent.Service.csproj" />
+  <Project Path="CyberAgent.UI/CyberAgent.UI.csproj">
+    <Platform Project="x64" />
+  </Project>
+</Solution>

@@ -1,0 +1,28 @@
+## .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+*.rsuser
+
+## Published output
+publish/
+out/
+
+## EF Core migrations snapshot (keep migrations, not the DB)
+*.db
+*.sqlite
+
+## Environment / secrets
+appsettings.Local.json
+*.pfx
+*.p12
+
+## Docker volumes
+mysql_data/
+
+## OS
+.DS_Store
+Thumbs.db
