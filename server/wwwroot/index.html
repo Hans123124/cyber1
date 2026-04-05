@@ -376,15 +376,6 @@
     <div>
       <label style="font-size:12px;color:var(--text2);">Duration (whole hours)</label>
       <select class="num-input" id="modal-hours-select" style="margin-top:4px;">
-        <option value="1">1 hour</option>
-        <option value="2">2 hours</option>
-        <option value="3">3 hours</option>
-        <option value="4">4 hours</option>
-        <option value="5">5 hours</option>
-        <option value="6">6 hours</option>
-        <option value="8">8 hours</option>
-        <option value="10">10 hours</option>
-        <option value="12">12 hours</option>
       </select>
     </div>
     <div style="background:var(--panel2);border-radius:8px;padding:10px;font-size:13px;">
@@ -424,12 +415,6 @@
     <div>
       <label style="font-size:12px;color:var(--text2);">Additional Duration (whole hours)</label>
       <select class="num-input" id="extend-hours-select" style="margin-top:4px;">
-        <option value="1">1 hour</option>
-        <option value="2">2 hours</option>
-        <option value="3">3 hours</option>
-        <option value="4">4 hours</option>
-        <option value="5">5 hours</option>
-        <option value="6">6 hours</option>
       </select>
     </div>
     <div style="background:var(--panel2);border-radius:8px;padding:10px;font-size:13px;">
@@ -564,12 +549,24 @@ async function apiFetch(path, opts = {}) {
 // ═══════════════════════════════════════════════════════════
 async function init() {
   buildElementsPalette();
+  buildHoursSelectors();
   await loadCurrentUser();
   await loadClubs();
   await loadWorkstations();
   await loadTariffPlans();
   setupEventListeners();
   startPolling();
+}
+
+function buildHoursSelectors() {
+  const opts = Array.from({length: 48}, (_, i) => {
+    const h = i + 1;
+    return `<option value="${h}">${h} ${h === 1 ? 'hour' : 'hours'}</option>`;
+  }).join('');
+  const startSel = document.getElementById('modal-hours-select');
+  const extendSel = document.getElementById('extend-hours-select');
+  if (startSel) startSel.innerHTML = opts;
+  if (extendSel) extendSel.innerHTML = opts;
 }
 
 async function loadCurrentUser() {
@@ -586,9 +583,16 @@ function applyRoleVisibility() {
   const isCashier = state.currentUserRoles.includes('Cashier') &&
     !state.currentUserRoles.includes('Admin') &&
     !state.currentUserRoles.includes('SuperAdmin');
-  // Cashier cannot edit tariff plans
+  // Cashier cannot see or edit tariff plans
   const addTariffBtn = document.getElementById('btn-add-tariff');
   if (addTariffBtn) addTariffBtn.style.display = isCashier ? 'none' : '';
+  const tariffCard = document.getElementById('tariff-plans-card');
+  if (tariffCard) tariffCard.style.display = isCashier ? 'none' : '';
+  // Cashier cannot access Configuration tab
+  const configTabBtn = document.querySelector('.tab-btn[data-tab="configuration"]');
+  if (configTabBtn) configTabBtn.style.display = isCashier ? 'none' : '';
+  const configNavIcon = document.querySelector('.nav-icon[data-page="configuration"]');
+  if (configNavIcon) configNavIcon.style.display = isCashier ? 'none' : '';
   // Store for later use
   state._isCashier = isCashier;
 }

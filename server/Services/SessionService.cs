@@ -23,8 +23,8 @@ public class SessionService(
 {
     public async Task<Session> StartAsync(StartSessionRequest request, CancellationToken ct = default)
     {
-        if (request.DurationHours <= 0)
-            throw new InvalidOperationException("DurationHours must be a positive whole number.");
+        if (request.DurationHours <= 0 || request.DurationHours > 48)
+            throw new InvalidOperationException("DurationHours must be a whole number between 1 and 48.");
 
         var tariff = await db.TariffPlans.FindAsync([request.TariffPlanId], ct)
             ?? throw new InvalidOperationException("Tariff plan not found.");
@@ -99,8 +99,8 @@ public class SessionService(
 
     public async Task<Session> ExtendAsync(Guid sessionId, ExtendSessionRequest request, CancellationToken ct = default)
     {
-        if (request.DurationHours <= 0)
-            throw new InvalidOperationException("DurationHours must be a positive whole number.");
+        if (request.DurationHours <= 0 || request.DurationHours > 48)
+            throw new InvalidOperationException("DurationHours must be a whole number between 1 and 48.");
 
         var session = await db.Sessions
             .Include(s => s.TariffPlan)
