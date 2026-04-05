@@ -94,23 +94,23 @@
 </div>
 
 <script type="module">
-import { apiFetch } from './api.js';
-import { currentUser } from './nav.js';
+import { apiFetch, escHtml } from './api.js';
 
 // Guard: redirect non-SuperAdmins (server also enforces this with 403)
-const meRes = await fetch('/api/account/me');
-if (meRes.ok) {
-  const me = await meRes.json();
-  if (!Array.isArray(me.roles) || !me.roles.includes('SuperAdmin')) {
-    location.href = '/';
+try {
+  const meRes = await fetch('/api/account/me');
+  if (!meRes.ok) { location.href = '/'; }
+  else {
+    const me = await meRes.json();
+    if (!Array.isArray(me.roles) || !me.roles.includes('SuperAdmin')) {
+      location.href = '/';
+    }
   }
+} catch {
+  location.href = '/login';
 }
 
 let allClubs = [];
-
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
 
 async function loadClubs() {
   const res = await apiFetch('/api/admin/clubs');

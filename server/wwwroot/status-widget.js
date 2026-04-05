@@ -3,6 +3,8 @@
 // then polls /api/account/me + clubs + tariffs every 10 s.
 // Include on any admin page via <script type="module" src="status-widget.js">.
 
+import { escHtml } from './api.js';
+
 // ── Build DOM ─────────────────────────────────────────────────────────────────
 const widget = document.createElement('div');
 widget.id = 'sw';
@@ -62,14 +64,6 @@ swHeader.addEventListener('click', () => {
 });
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-function esc(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 async function safeJson(r) {
   try { return await r.json(); } catch { return null; }
 }
@@ -102,7 +96,7 @@ async function loadMe() {
 
   const roles = Array.isArray(me.roles) ? me.roles : [];
   elRoles.innerHTML = roles.length
-    ? roles.map(ro => `<span class="sw-role">${esc(ro)}</span>`).join('')
+    ? roles.map(ro => `<span class="sw-role">${escHtml(ro)}</span>`).join('')
     : '<span class="sw-role" style="opacity:.5;">—</span>';
 }
 
@@ -115,7 +109,7 @@ async function loadClubs() {
 
   const saved = localStorage.getItem('sw-club-id');
   elClubSel.innerHTML = swClubs
-    .map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`)
+    .map(c => `<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`)
     .join('');
 
   if (saved && swClubs.some(c => String(c.id) === saved)) {
@@ -148,9 +142,9 @@ async function loadTariffs() {
     const rate   = t.hourlyRateMdl ?? t.hourlyRate ?? t.price ?? '—';
     const active = t.isActive === false ? 'inactive' : 'active';
     return `<div class="sw-tariff-row">
-      <span class="sw-tariff-name">${esc(t.name || '—')}</span>
-      <span class="sw-tariff-rate">${esc(String(rate))} MDL/h</span>
-      <span class="sw-tariff-badge ${esc(active)}">${esc(active)}</span>
+      <span class="sw-tariff-name">${escHtml(t.name || '—')}</span>
+      <span class="sw-tariff-rate">${escHtml(String(rate))} MDL/h</span>
+      <span class="sw-tariff-badge ${escHtml(active)}">${escHtml(active)}</span>
     </div>`;
   }).join('');
 }

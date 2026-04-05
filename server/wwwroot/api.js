@@ -1,7 +1,5 @@
 /* ── CyberClub Admin – api.js ────────────────────────────────────────────── */
-// Shared API fetch helper. Imported as an ES module by map, config, and
-// workstations modules. Also exported as window globals for pages that still
-// load scripts in classic (non-module) mode.
+// Shared helpers. Imported as an ES module by map, config, and workstations.
 
 export function adminKey() {
   const el = document.getElementById('admin-key-input');
@@ -13,4 +11,13 @@ export function apiFetch(url, opts = {}) {
   const k = adminKey();
   if (k) headers['X-Admin-Key'] = k;
   return fetch(url, { ...opts, headers });
+}
+
+/** Escape a string for safe insertion into HTML. */
+export function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
