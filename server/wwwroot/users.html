@@ -4,156 +4,165 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CyberClub — User Management</title>
-<link rel="stylesheet" href="/admin.css">
-<style>
-  .page-wrap { padding: 20px; max-width: 960px; margin: 0 auto; }
-  h1 { font-size: 20px; margin-bottom: 16px; }
-  .card { background: #20233a; border: 1px solid #2e3254; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
-  .card h2 { font-size: 15px; margin-bottom: 14px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { color: #8890b8; font-weight: 500; text-align: left; padding: 6px 8px; border-bottom: 1px solid #2e3254; }
-  td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top; }
-  tr:last-child td { border-bottom: none; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 4px; }
-  .badge-superadmin { background: rgba(91,106,240,.2); color: #8a9ff8; }
-  .badge-admin { background: rgba(46,204,113,.15); color: #2ecc71; }
-  .badge-cashier { background: rgba(243,156,18,.15); color: #f39c12; }
-  .badge-player { background: rgba(255,255,255,.08); color: #8890b8; }
-  .btn { padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: .15s; }
-  .btn-primary { background: #5b6af0; color: #fff; }
-  .btn-primary:hover { background: #3d4ac0; }
-  .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.25); }
-  .btn-danger:hover { background: rgba(231,76,60,.3); }
-  .btn-sm { padding: 4px 10px; font-size: 12px; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .form-field { display: flex; flex-direction: column; gap: 5px; }
-  .form-field label { font-size: 11px; color: #8890b8; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
-  .form-field input, .form-field select { background: #272a42; border: 1px solid #2e3254; color: #e0e2f5; border-radius: 6px; padding: 8px 10px; font-size: 13px; outline: none; }
-  .form-field input:focus, .form-field select:focus { border-color: #5b6af0; }
-  .error { color: #e74c3c; font-size: 12px; margin-top: 6px; display: none; }
-  .error.visible { display: block; }
-  .back-link { display: inline-flex; align-items: center; gap: 6px; color: #8890b8; text-decoration: none; font-size: 13px; margin-bottom: 16px; }
-  .back-link:hover { color: #e0e2f5; }
-  body { background: #1a1c2e; color: #e0e2f5; font-family: 'Segoe UI', system-ui, sans-serif; }
-  .clubs-list { font-size: 12px; color: #8890b8; }
-</style>
+<link rel="stylesheet" href="admin.css">
+<script type="module" src="nav.js"></script>
+<script type="module" src="status-widget.js"></script>
 </head>
 <body>
-<div class="page-wrap">
-  <a href="/" class="back-link">← Back to Map</a>
-  <h1>User Management</h1>
 
-  <!-- Add User Form -->
-  <div class="card">
-    <h2>Add User</h2>
-    <div class="form-grid">
-      <div class="form-field">
-        <label>Email *</label>
-        <input type="email" id="new-email" placeholder="user@example.com">
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SIDEBAR
+     ══════════════════════════════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="logo">⚡ CyberClub</div>
+  <a href="index.html"         class="nav-item nav-map"          >🗺 Map</a>
+  <a href="configuration.html" class="nav-item nav-config"       >⚙️ Configuration</a>
+  <a href="workstations.html"  class="nav-item nav-ws"           >🖥 Workstations</a>
+  <div style="flex:1"></div>
+  <a href="users.html"         class="nav-item nav-users active" >👤 Users</a>
+  <a href="#"                  class="nav-item nav-logout"
+     style="color:var(--danger);">⏏ Logout</a>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     USERS PAGE
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div style="flex:1;overflow-y:auto;">
+  <div class="page-wrap">
+    <h1>User Management</h1>
+
+    <!-- Add User Form -->
+    <div class="card">
+      <h2>Add User</h2>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Email *</label>
+          <input type="email" id="new-email" placeholder="user@example.com">
+        </div>
+        <div class="form-field">
+          <label>Username</label>
+          <input type="text" id="new-username" placeholder="username">
+        </div>
+        <div class="form-field">
+          <label>Display Name</label>
+          <input type="text" id="new-displayname" placeholder="Full Name">
+        </div>
+        <div class="form-field">
+          <label>Password *</label>
+          <input type="password" id="new-password" placeholder="••••••••">
+        </div>
+        <div class="form-field">
+          <label>Role</label>
+          <select id="new-role">
+            <option value="">Player (Customer)</option>
+            <option value="Cashier">Cashier (Staff)</option>
+            <option value="Admin">Admin</option>
+            <option value="SuperAdmin">SuperAdmin</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Assign Clubs</label>
+          <select id="new-clubs" multiple style="min-height:80px;"><!-- populated dynamically --></select>
+        </div>
       </div>
-      <div class="form-field">
-        <label>Username</label>
-        <input type="text" id="new-username" placeholder="username">
-      </div>
-      <div class="form-field">
-        <label>Display Name</label>
-        <input type="text" id="new-displayname" placeholder="Full Name">
-      </div>
-      <div class="form-field">
-        <label>Password *</label>
-        <input type="password" id="new-password" placeholder="••••••••">
-      </div>
-      <div class="form-field">
-        <label>Role</label>
-        <select id="new-role">
-          <option value="">Player (Customer)</option>
-          <option value="Cashier">Cashier (Staff)</option>
-          <option value="Admin">Admin</option>
-          <option value="SuperAdmin">SuperAdmin</option>
-        </select>
-      </div>
-      <div class="form-field">
-        <label>Assign Clubs</label>
-        <select id="new-clubs" multiple style="min-height:80px;">
-          <!-- populated dynamically -->
-        </select>
+      <div class="form-error" id="add-error"></div>
+      <div style="margin-top:14px;">
+        <button class="btn btn-primary" id="btn-add-user">Add User</button>
       </div>
     </div>
-    <div class="error" id="add-error"></div>
-    <div style="margin-top:14px;">
-      <button class="btn btn-primary" onclick="addUser()">Add User</button>
-    </div>
-  </div>
 
-  <!-- Users Table -->
-  <div class="card">
-    <h2>All Users</h2>
-    <table id="users-table">
-      <thead>
-        <tr>
-          <th>Email</th>
-          <th>Username</th>
-          <th>Display Name</th>
-          <th>Roles</th>
-          <th>Clubs</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="users-body">
-        <tr><td colspan="6" style="text-align:center;color:#8890b8;padding:20px;">Loading...</td></tr>
-      </tbody>
-    </table>
+    <!-- Users Table -->
+    <div class="card">
+      <h2>All Users</h2>
+      <table class="data-table" id="users-table">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Username</th>
+            <th>Display Name</th>
+            <th>Roles</th>
+            <th>Clubs</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="users-body">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
-<script>
+<script type="module">
+import { apiFetch } from './api.js';
+import { currentUser } from './nav.js';
+
+// Guard: redirect non-SuperAdmins (server also enforces this with 403)
+const meRes = await fetch('/api/account/me');
+if (meRes.ok) {
+  const me = await meRes.json();
+  if (!Array.isArray(me.roles) || !me.roles.includes('SuperAdmin')) {
+    location.href = '/';
+  }
+}
+
 let allClubs = [];
 
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 async function loadClubs() {
-  const res = await fetch('/api/admin/clubs');
+  const res = await apiFetch('/api/admin/clubs');
   if (!res.ok) return;
   allClubs = await res.json();
   const sel = document.getElementById('new-clubs');
-  sel.innerHTML = allClubs.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  sel.innerHTML = allClubs.map(c => `<option value="${escHtml(String(c.id))}">${escHtml(c.name)}</option>`).join('');
 }
 
 async function loadUsers() {
   const tbody = document.getElementById('users-body');
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#8890b8;padding:20px;">Loading...</td></tr>';
-  const res = await fetch('/api/admin/users');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">Loading…</td></tr>';
+  const res = await apiFetch('/api/admin/users');
   if (!res.ok) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#e74c3c;padding:20px;">Failed to load users.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger);padding:20px;">Failed to load users.</td></tr>';
     return;
   }
   const users = await res.json();
   if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#8890b8;padding:20px;">No users found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">No users found.</td></tr>';
     return;
   }
   tbody.innerHTML = users.map(u => {
-    const roles = (u.roles || []).map(r => `<span class="badge badge-${r.toLowerCase()}">${r}</span>`).join('') || '<span class="badge badge-player">Player</span>';
-    const clubs = u.clubs && u.clubs.length ? u.clubs.map(c => c.name).join(', ') : '—';
+    const roleBadges = (u.roles || [])
+      .map(r => `<span class="badge badge-${escHtml(r.toLowerCase())}">${escHtml(r)}</span>`)
+      .join('') || '<span class="badge badge-player">Player</span>';
+    const clubs = u.clubs?.length ? u.clubs.map(c => escHtml(c.name)).join(', ') : '—';
     return `<tr>
       <td>${escHtml(u.email || '')}</td>
       <td>${escHtml(u.username || '')}</td>
       <td>${escHtml(u.displayName || '')}</td>
-      <td>${roles}</td>
-      <td class="clubs-list">${escHtml(clubs)}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Delete</button></td>
+      <td>${roleBadges}</td>
+      <td class="clubs-list">${clubs}</td>
+      <td><button class="btn btn-danger btn-sm" data-uid="${escHtml(u.id)}">Delete</button></td>
     </tr>`;
   }).join('');
+
+  tbody.querySelectorAll('[data-uid]').forEach(btn => {
+    btn.addEventListener('click', () => deleteUser(btn.dataset.uid));
+  });
 }
 
 async function addUser() {
   const errEl = document.getElementById('add-error');
   errEl.classList.remove('visible');
-  const email = document.getElementById('new-email').value.trim();
-  const password = document.getElementById('new-password').value;
-  const username = document.getElementById('new-username').value.trim() || null;
+  const email       = document.getElementById('new-email').value.trim();
+  const password    = document.getElementById('new-password').value;
+  const username    = document.getElementById('new-username').value.trim()    || null;
   const displayName = document.getElementById('new-displayname').value.trim() || null;
-  const role = document.getElementById('new-role').value || null;
-  const clubsSel = document.getElementById('new-clubs');
-  const clubIds = Array.from(clubsSel.selectedOptions).map(o => o.value);
+  const role        = document.getElementById('new-role').value               || null;
+  const clubsSel    = document.getElementById('new-clubs');
+  const clubIds     = Array.from(clubsSel.selectedOptions).map(o => o.value);
 
   if (!email || !password) {
     errEl.textContent = 'Email and password are required.';
@@ -161,18 +170,17 @@ async function addUser() {
     return;
   }
 
-  const res = await fetch('/api/admin/users', {
+  const res = await apiFetch('/api/admin/users', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, username, displayName, role, clubIds })
+    body: JSON.stringify({ email, password, username, displayName, role, clubIds }),
   });
 
   if (res.ok) {
-    document.getElementById('new-email').value = '';
-    document.getElementById('new-password').value = '';
-    document.getElementById('new-username').value = '';
+    document.getElementById('new-email').value       = '';
+    document.getElementById('new-password').value    = '';
+    document.getElementById('new-username').value    = '';
     document.getElementById('new-displayname').value = '';
-    document.getElementById('new-role').value = '';
+    document.getElementById('new-role').value        = '';
     clubsSel.selectedIndex = -1;
     await loadUsers();
   } else {
@@ -185,14 +193,12 @@ async function addUser() {
 
 async function deleteUser(id) {
   if (!confirm('Delete this user?')) return;
-  const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+  const res = await apiFetch(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
   if (res.ok) await loadUsers();
   else alert('Failed to delete user.');
 }
 
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+document.getElementById('btn-add-user').addEventListener('click', addUser);
 
 loadClubs();
 loadUsers();

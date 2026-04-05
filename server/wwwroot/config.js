@@ -1,16 +1,6 @@
 /* ── CyberClub Admin – config.js ────────────────────────────────────────── */
-'use strict';
 
-function adminKey() {
-  return document.getElementById('admin-key-input').value.trim();
-}
-
-function apiFetch(url, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
-  const k = adminKey();
-  if (k) headers['X-Admin-Key'] = k;
-  return fetch(url, { ...opts, headers });
-}
+import { apiFetch } from './api.js';
 
 // ── Load settings ─────────────────────────────────────────────────────────────
 async function loadSettings() {
@@ -18,11 +8,11 @@ async function loadSettings() {
     const res = await apiFetch('/api/admin/settings');
     if (!res.ok) { console.warn('Could not load settings, status', res.status); return; }
     const s = await res.json();
-    document.getElementById('idle-seconds').value          = s.shutdownIdlePcSeconds;
+    document.getElementById('idle-seconds').value           = s.shutdownIdlePcSeconds;
     document.getElementById('auto-restart-enabled').checked = s.autoRestartEnabled;
-    document.getElementById('auto-restart-seconds').value  = s.autoRestartAfterSessionSeconds;
-    document.getElementById('show-gamer-name').checked     = s.showGamerNameOnMap;
-    document.getElementById('action-menu-mode').value      = s.actionMenuMode;
+    document.getElementById('auto-restart-seconds').value   = s.autoRestartAfterSessionSeconds;
+    document.getElementById('show-gamer-name').checked      = s.showGamerNameOnMap;
+    document.getElementById('action-menu-mode').value       = s.actionMenuMode;
     syncRestartRow();
   } catch (e) {
     console.error('loadSettings error', e);
