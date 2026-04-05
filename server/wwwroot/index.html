@@ -4,194 +4,603 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CyberClub Admin</title>
+<link rel="stylesheet" href="admin.css">
 <script>
-  // Redirect to login if not authenticated
-  fetch('/api/account/me').then(r=>{if(r.status===401)location.href='/login';});
+  fetch('/api/account/me').then(r => { if (r.status === 401) location.href = '/login'; });
 </script>
 <style>
-  /* existing styles unchanged */
+/* ── Status Widget ──────────────────────────────────────────────────────────── */
+#sw {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 9900;
+  width: 288px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  transition: box-shadow .2s;
+}
+#sw:hover { box-shadow: 0 16px 48px rgba(0,0,0,.7); }
+
+#sw-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+#sw-title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--accent2);
+}
+#sw-health {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: rgba(34,197,94,.15);
+  color: var(--success);
+  border: 1px solid rgba(34,197,94,.25);
+  transition: background .2s, color .2s;
+}
+#sw-health.err {
+  background: rgba(239,68,68,.15);
+  color: var(--danger);
+  border-color: rgba(239,68,68,.25);
+}
+#sw-health::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+#sw-toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--muted);
+  transition: color .15s, background .15s;
+  font-size: 14px;
+  line-height: 1;
+}
+#sw-toggle:hover { color: var(--text); background: var(--border); }
+
+#sw-body { overflow: hidden; }
+#sw-body.collapsed { display: none; }
+
+#sw-user {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+#sw-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+#sw-user-info { flex: 1; min-width: 0; }
+#sw-email {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#sw-roles { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 3px; }
+.sw-role {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(99,102,241,.2);
+  color: var(--accent2);
+  border: 1px solid rgba(99,102,241,.3);
+}
+
+#sw-clubs {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#sw-clubs label {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-weight: 500;
+}
+#sw-club-sel {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  min-width: 0;
+}
+#sw-club-sel:focus { border-color: var(--accent); }
+
+#sw-tariffs {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  max-height: 160px;
+  overflow-y: auto;
+}
+#sw-tariffs-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.sw-tariff-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.sw-tariff-row:last-child { border-bottom: none; }
+.sw-tariff-name { flex: 1; color: var(--text); }
+.sw-tariff-rate {
+  font-weight: 600;
+  color: var(--accent2);
+  white-space: nowrap;
+}
+.sw-tariff-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.sw-tariff-badge.active {
+  background: rgba(34,197,94,.15);
+  color: var(--success);
+}
+.sw-tariff-badge.inactive {
+  background: rgba(100,116,139,.15);
+  color: var(--muted);
+}
+#sw-empty { color: var(--muted); font-style: italic; padding: 4px 0; }
+
+#sw-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  gap: 8px;
+}
+#sw-updated { font-size: 10px; color: var(--muted); flex: 1; }
+.sw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.sw-btn:hover { background: var(--border); }
+.sw-btn-danger { border-color: rgba(239,68,68,.4); color: var(--danger); }
+.sw-btn-danger:hover { background: rgba(239,68,68,.15); border-color: var(--danger); }
+
+/* ── Page layout ──────────────────────────────────────────────────────────── */
+body { display: flex; height: 100vh; overflow: hidden; }
+
+/* ── Map page ─────────────────────────────────────────────────────────────── */
+#map-page {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+#map-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#map-topbar {
+  height: var(--topbar-h);
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+#map-topbar .page-title { font-size: 15px; font-weight: 700; color: var(--accent2); margin-right: 4px; }
+#map-topbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 </style>
 </head>
 <body>
-<!-- DEBUG PANEL (auto-updating) -->
-<div id="debug-panel" style="position:fixed;top:8px;right:8px;z-index:3000;background:rgba(18,20,31,.92);border:1px solid rgba(46,50,84,.9);backdrop-filter:blur(10px);color:#e0e2f5;border-radius:10px;padding:10px 10px 8px;min-width:280px;max-width:360px;font:12px 'Segoe UI',system-ui,sans-serif;">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
-    <div style="font-weight:700;letter-spacing:.02em;">Debug</div>
-    <div style="display:flex;gap:6px;">
-      <button id="dbg-refresh" style="background:#20233a;border:1px solid #2e3254;color:#e0e2f5;border-radius:6px;padding:4px 8px;cursor:pointer;">Refresh</button>
-      <button id="dbg-logout" style="background:#2a1a1a;border:1px solid #8a2a2a;color:#f59595;border-radius:6px;padding:4px 8px;cursor:pointer;">Logout</button>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     STATUS WIDGET
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div id="sw">
+  <!-- Header (clickable to collapse/expand) -->
+  <div id="sw-header">
+    <span id="sw-title">Status</span>
+    <span id="sw-health" title="API health">OK</span>
+    <span id="sw-toggle" title="Toggle panel">▾</span>
+  </div>
+
+  <!-- Body (collapsible) -->
+  <div id="sw-body">
+    <!-- User row -->
+    <div id="sw-user">
+      <div id="sw-avatar">?</div>
+      <div id="sw-user-info">
+        <div id="sw-email">Loading…</div>
+        <div id="sw-roles"></div>
+      </div>
+    </div>
+
+    <!-- Club selector -->
+    <div id="sw-clubs">
+      <label for="sw-club-sel">Club</label>
+      <select id="sw-club-sel"><option value="">—</option></select>
+    </div>
+
+    <!-- Tariff plans -->
+    <div id="sw-tariffs">
+      <div id="sw-tariffs-title">Tariff Plans</div>
+      <div id="sw-tariff-list"><span id="sw-empty">Select a club…</span></div>
+    </div>
+
+    <!-- Footer -->
+    <div id="sw-footer">
+      <span id="sw-updated">—</span>
+      <button class="sw-btn" id="sw-btn-refresh" title="Refresh now">↻ Refresh</button>
+      <button class="sw-btn sw-btn-danger" id="sw-btn-logout" title="Sign out">→ Logout</button>
     </div>
   </div>
-  <div id="dbg-auth" style="color:#8890b8;line-height:1.35;">Loading…</div>
-  <div style="height:1px;background:#2e3254;margin:8px 0;"></div>
-  <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-    <div style="color:#8890b8;min-width:44px;">Club</div>
-    <select id="dbg-club" style="flex:1;background:#272a42;border:1px solid #2e3254;color:#e0e2f5;border-radius:6px;padding:4px 6px;cursor:pointer;"></select>
-  </div>
-  <div id="dbg-tariffs" style="color:#8890b8;white-space:pre-wrap;max-height:180px;overflow:auto;"></div>
-  <div id="dbg-last" style="margin-top:6px;color:#8890b8;font-size:11px;">
-    —
-  </div>
 </div>
 
-<!-- Original body content below (kept) -->
-
-<!-- ── Left nav ── -->
-<nav id="sidenav">
-  <div class="nav-icon active" data-page="map" title="Map">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-    </svg>
-  </div>
-  <div class="nav-icon" data-page="management" title="Management">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="2" y="3" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/>
-      <rect x="2" y="17" width="20" height="4" rx="1"/>
-    </svg>
-  </div>
-  <div class="nav-icon" data-page="configuration" title="Configuration">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1"/>
-    </svg>
-  </div>
-  <div class="nav-icon" data-page="users" title="Users" onclick="window.location.href='/users.html'" style="margin-top:auto;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-  </div>
-  <div class="nav-icon" title="Logout" onclick="logout()" style="color:#e74c3c;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-      <polyline points="16 17 21 12 16 7"/>
-      <line x1="21" y1="12" x2="9" y2="12"/>
-    </svg>
-  </div>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SIDEBAR
+     ══════════════════════════════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="logo">⚡ CyberClub</div>
+  <a href="index.html" class="nav-item active">🗺 Map</a>
+  <a href="configuration.html" class="nav-item">⚙️ Configuration</a>
+  <a href="workstations.html" class="nav-item">🖥 Workstations</a>
+  <a href="users.html" class="nav-item" style="margin-top:auto;">👤 Users</a>
+  <a href="#" class="nav-item" style="color:var(--danger);" onclick="logout();return false;">⏏ Logout</a>
 </nav>
 
-<div id="main">
-  <div id="topbar">
-    <h1>CyberClub Admin</h1>
-    <button class="tab-btn active" data-tab="map">Map</button>
-    <button class="tab-btn" data-tab="management">Management</button>
-    <button class="tab-btn" data-tab="configuration">Configuration</button>
-    <select id="club-selector"><option value="">Loading clubs…</option></select>
-  </div>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MAP PAGE
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div id="map-page">
+  <div id="map-main">
+    <!-- Top bar -->
+    <div id="map-topbar" class="topbar">
+      <span class="page-title">Map</span>
+      <span class="sep"></span>
+      <label class="inline-label">Admin Key:
+        <input type="password" id="admin-key-input" placeholder="X-Admin-Key" size="14">
+      </label>
+      <span class="sep"></span>
+      <button class="btn btn-sm" id="btn-save">💾 Save</button>
+      <button class="btn btn-sm btn-secondary" id="btn-zoom-out">−</button>
+      <button class="btn btn-sm btn-secondary" id="btn-zoom-reset">1×</button>
+      <button class="btn btn-sm btn-secondary" id="btn-zoom-in">+</button>
+    </div>
 
-  <div id="content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
-    <!-- Existing HTML remains unchanged from current file after this point -->
+    <!-- Canvas + right panel -->
+    <div style="flex:1;overflow:hidden;display:flex;">
+      <!-- Canvas -->
+      <div id="canvas-wrapper" class="canvas-wrapper">
+        <canvas id="map-canvas"></canvas>
+      </div>
+
+      <!-- Right panel -->
+      <div class="right-panel">
+        <!-- Tabs -->
+        <div class="panel-tabs">
+          <button class="tab-btn active" data-tab="settings">Settings</button>
+          <button class="tab-btn" data-tab="elements">Elements</button>
+          <button class="tab-btn" data-tab="zones">Zones</button>
+        </div>
+
+        <!-- Settings tab -->
+        <div class="tab-content active" id="tab-settings">
+          <div class="panel-section">
+            <h3>Grid &amp; Size</h3>
+            <label>Grid size (px)
+              <input type="number" id="cfg-grid-size" min="10" max="120" value="40">
+            </label>
+            <label>Width (px)
+              <input type="number" id="cfg-width" min="400" max="6000" value="1200">
+            </label>
+            <label>Height (px)
+              <input type="number" id="cfg-height" min="300" max="4000" value="800">
+            </label>
+            <div class="btn-row">
+              <button class="btn btn-sm" id="btn-apply-map">Apply</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Elements tab -->
+        <div class="tab-content" id="tab-elements">
+          <div class="panel-section">
+            <h3>Palette</h3>
+            <div class="element-grid" id="element-palette"></div>
+          </div>
+          <div class="panel-section" id="selected-panel" style="display:none;">
+            <h3>Selected Item</h3>
+            <label>Label
+              <input type="text" id="sel-label" placeholder="PC-01">
+            </label>
+            <label>Rotation (°)
+              <input type="number" id="sel-rotation" min="0" max="359" step="90" value="0">
+            </label>
+            <label>Workstation
+              <select id="sel-workstation">
+                <option value="">— none —</option>
+              </select>
+            </label>
+            <div class="btn-row">
+              <button class="btn btn-sm" id="btn-sel-save">Save</button>
+              <button class="btn btn-sm btn-danger" id="btn-sel-delete">Delete</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zones tab -->
+        <div class="tab-content" id="tab-zones">
+          <div class="panel-section">
+            <h3>New Zone</h3>
+            <label>Name
+              <input type="text" id="zone-name" placeholder="VIP Area">
+            </label>
+            <label>Colour
+              <input type="color" id="zone-color" value="#3b82f6">
+            </label>
+            <div class="btn-row">
+              <button class="btn btn-sm" id="btn-add-zone">✏ Draw Zone</button>
+            </div>
+          </div>
+          <div class="panel-section">
+            <h3>Zones</h3>
+            <ul class="zone-list" id="zone-list"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="statusbar" id="status-bar">Ready</div>
   </div>
 </div>
 
+<!-- ── Context menu ─────────────────────────────────────────────────────── -->
+<div id="ctx-menu" class="context-menu" style="display:none;">
+  <div class="ctx-item" data-action="lock">🔒 Lock</div>
+  <div class="ctx-item" data-action="unlock">🔓 Unlock</div>
+  <div class="ctx-item" data-action="reboot">🔄 Reboot</div>
+  <div class="ctx-item" data-action="shutdown">⏻ Shutdown</div>
+  <hr>
+  <div class="ctx-item" data-action="delete" style="color:var(--danger);">🗑 Delete</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MAP LOGIC
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script src="map.js"></script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     GLOBAL HELPERS
+     ══════════════════════════════════════════════════════════════════════════ -->
 <script>
-  // Debug panel logic (non-blocking)
-  (function(){
-    const dbgAuth = document.getElementById('dbg-auth');
-    const dbgClub = document.getElementById('dbg-club');
-    const dbgTariffs = document.getElementById('dbg-tariffs');
-    const dbgLast = document.getElementById('dbg-last');
-    const btnRefresh = document.getElementById('dbg-refresh');
-    const btnLogout = document.getElementById('dbg-logout');
-
-    let clubs = [];
-
-    function fmtTime(d){
-      return d.toLocaleString();
-    }
-
-    async function safeJson(r){
-      try { return await r.json(); } catch { return null; }
-    }
-
-    async function loadMe(){
-      const r = await fetch('/api/account/me', { headers: { 'Content-Type':'application/json' } });
-      if (r.status === 401) {
-        dbgAuth.textContent = 'Not authenticated (401) — redirecting to /login…';
-        setTimeout(()=>location.href='/login', 300);
-        return null;
-      }
-      const me = await safeJson(r);
-      if (!me) {
-        dbgAuth.textContent = 'Authenticated, but /api/account/me returned no JSON.';
-        return null;
-      }
-      const roles = (me.roles || []).join(', ') || '—';
-      dbgAuth.innerHTML = `User: <b>${me.email || me.userName || '—'}</b><br>Roles: <b>${roles}</b>`;
-      return me;
-    }
-
-    async function loadClubs(){
-      // Use same API root the app uses
-      const r = await fetch('/api/admin/clubs', { headers: { 'Content-Type':'application/json' } });
-      if (!r.ok) {
-        dbgTariffs.textContent = `Clubs load failed: ${r.status} ${await r.text()}`;
-        return [];
-      }
-      const data = await safeJson(r);
-      return Array.isArray(data) ? data : [];
-    }
-
-    function renderClubSelect(){
-      if (!dbgClub) return;
-      dbgClub.innerHTML = clubs.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-      const cur = localStorage.getItem('dbgClubId');
-      if (cur && clubs.some(c=>c.id===cur)) dbgClub.value = cur;
-      else if (clubs[0]) dbgClub.value = clubs[0].id;
-    }
-
-    async function loadTariffs(clubId){
-      if (!clubId) {
-        dbgTariffs.textContent = 'Select a club to load tariff plans.';
-        return;
-      }
-      const r = await fetch(`/api/admin/clubs/${clubId}/tariff-plans`, { headers: { 'Content-Type':'application/json' } });
-      if (!r.ok) {
-        dbgTariffs.textContent = `Tariffs load failed: ${r.status} ${await r.text()}`;
-        return;
-      }
-      const data = await safeJson(r);
-      if (!Array.isArray(data) || data.length === 0) {
-        dbgTariffs.textContent = '(no tariff plans)';
-        return;
-      }
-      dbgTariffs.textContent = data.map(t => {
-        const rate = (t.hourlyRateMdl ?? t.hourlyRate ?? t.price ?? '—');
-        const active = (t.isActive === false) ? 'inactive' : 'active';
-        return `• ${t.name} — ${rate} MDL/h (${active})`;
-      }).join('\n');
-    }
-
-    async function refreshAll(){
-      try {
-        await loadMe();
-        clubs = await loadClubs();
-        renderClubSelect();
-        const clubId = dbgClub.value;
-        localStorage.setItem('dbgClubId', clubId);
-        await loadTariffs(clubId);
-        dbgLast.textContent = `Updated: ${fmtTime(new Date())}`;
-      } catch (e) {
-        dbgTariffs.textContent = `Debug refresh error: ${e.message || e}`;
-      }
-    }
-
-    btnRefresh.addEventListener('click', refreshAll);
-    dbgClub.addEventListener('change', ()=>refreshAll());
-    btnLogout.addEventListener('click', async ()=>{
-      try {
-        await fetch('/api/account/logout', { method:'POST', headers:{'Content-Type':'application/json'} });
-      } catch {}
-      location.href = '/login';
-    });
-
-    // auto refresh every 10 seconds
-    refreshAll();
-    setInterval(refreshAll, 10000);
-  })();
+function logout() {
+  fetch('/api/account/logout', { method: 'POST' }).finally(() => { location.href = '/login'; });
+}
 </script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     STATUS WIDGET LOGIC  (isolated IIFE — does not touch map.js globals)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  /* Guard: only run on pages that have the widget */
+  const widget = document.getElementById('sw');
+  if (!widget) return;
+
+  const elHealth   = document.getElementById('sw-health');
+  const elAvatar   = document.getElementById('sw-avatar');
+  const elEmail    = document.getElementById('sw-email');
+  const elRoles    = document.getElementById('sw-roles');
+  const elClubSel  = document.getElementById('sw-club-sel');
+  const elTariffs  = document.getElementById('sw-tariff-list');
+  const elUpdated  = document.getElementById('sw-updated');
+  const btnRefresh = document.getElementById('sw-btn-refresh');
+  const btnLogout  = document.getElementById('sw-btn-logout');
+  const swBody     = document.getElementById('sw-body');
+  const swToggle   = document.getElementById('sw-toggle');
+  const swHeader   = document.getElementById('sw-header');
+
+  let swCollapsed = false;
+  let swClubs     = [];
+
+  /* ── Collapse / Expand ─────────────────────────────────────────────────── */
+  swHeader.addEventListener('click', () => {
+    swCollapsed = !swCollapsed;
+    swBody.classList.toggle('collapsed', swCollapsed);
+    swToggle.textContent = swCollapsed ? '▸' : '▾';
+  });
+
+  /* ── Utilities ─────────────────────────────────────────────────────────── */
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  async function safeJson(r) {
+    try { return await r.json(); } catch { return null; }
+  }
+
+  function setHealth(ok, code) {
+    if (ok) {
+      elHealth.textContent = 'OK';
+      elHealth.classList.remove('err');
+    } else {
+      elHealth.textContent = code ? String(code) : 'ERR';
+      elHealth.classList.add('err');
+    }
+  }
+
+  /* ── Load current user ─────────────────────────────────────────────────── */
+  async function loadMe() {
+    const r = await fetch('/api/account/me');
+    setHealth(r.ok, r.status);
+    if (r.status === 401) {
+      elEmail.textContent = 'Not authenticated';
+      setTimeout(() => { location.href = '/login'; }, 400);
+      return;
+    }
+    const me = await safeJson(r);
+    if (!me) { elEmail.textContent = 'No user data'; return; }
+
+    const display = me.email || me.userName || me.username || '—';
+    elEmail.textContent = display;
+    elAvatar.textContent = display.charAt(0).toUpperCase();
+
+    const roles = Array.isArray(me.roles) ? me.roles : [];
+    elRoles.innerHTML = roles.length
+      ? roles.map(ro => `<span class="sw-role">${esc(ro)}</span>`).join('')
+      : '<span class="sw-role" style="opacity:.5;">—</span>';
+  }
+
+  /* ── Load clubs ────────────────────────────────────────────────────────── */
+  async function loadClubs() {
+    const r = await fetch('/api/admin/clubs');
+    if (!r.ok) return;
+    const data = await safeJson(r);
+    swClubs = Array.isArray(data) ? data : [];
+
+    const saved = localStorage.getItem('sw-club-id');
+    elClubSel.innerHTML = swClubs
+      .map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`)
+      .join('');
+
+    if (saved && swClubs.some(c => c.id === saved)) {
+      elClubSel.value = saved;
+    } else if (swClubs.length) {
+      elClubSel.value = swClubs[0].id;
+    }
+  }
+
+  /* ── Load tariff plans for selected club ───────────────────────────────── */
+  async function loadTariffs() {
+    const clubId = elClubSel.value;
+    if (!clubId) {
+      elTariffs.innerHTML = '<span id="sw-empty">Select a club…</span>';
+      return;
+    }
+    localStorage.setItem('sw-club-id', clubId);
+
+    const r = await fetch(`/api/admin/clubs/${encodeURIComponent(clubId)}/tariff-plans`);
+    if (!r.ok) {
+      elTariffs.innerHTML = `<span style="color:var(--danger)">Error ${r.status}</span>`;
+      return;
+    }
+    const data = await safeJson(r);
+    if (!Array.isArray(data) || !data.length) {
+      elTariffs.innerHTML = '<span id="sw-empty">No tariff plans</span>';
+      return;
+    }
+
+    elTariffs.innerHTML = data.map(t => {
+      const rate   = t.hourlyRateMdl ?? t.hourlyRate ?? t.price ?? '—';
+      const active = t.isActive === false ? 'inactive' : 'active';
+      return `<div class="sw-tariff-row">
+        <span class="sw-tariff-name">${esc(t.name || '—')}</span>
+        <span class="sw-tariff-rate">${esc(String(rate))} MDL/h</span>
+        <span class="sw-tariff-badge ${esc(active)}">${esc(active)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Full refresh ──────────────────────────────────────────────────────── */
+  async function refreshAll() {
+    try {
+      await loadMe();
+      await loadClubs();
+      await loadTariffs();
+      const now = new Date();
+      elUpdated.textContent = `Updated ${now.toLocaleTimeString()}`;
+    } catch (e) {
+      elUpdated.textContent = `Error: ${e.message || e}`;
+    }
+  }
+
+  /* ── Events ────────────────────────────────────────────────────────────── */
+  btnRefresh.addEventListener('click', refreshAll);
+
+  elClubSel.addEventListener('change', loadTariffs);
+
+  btnLogout.addEventListener('click', async () => {
+    try { await fetch('/api/account/logout', { method: 'POST' }); } catch (_) {}
+    location.href = '/login';
+  });
+
+  /* ── Bootstrap ─────────────────────────────────────────────────────────── */
+  refreshAll();
+  setInterval(refreshAll, 10000);
+})();
+</script>
+
 </body>
-</html>.
+</html>
