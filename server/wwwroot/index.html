@@ -400,7 +400,7 @@ body { display: flex; height: 100vh; overflow: hidden; }
             <label>Name
               <input type="text" id="zone-name" placeholder="VIP Area">
             </label>
-            <label>Colour
+            <label>Color
               <input type="color" id="zone-color" value="#3b82f6">
             </label>
             <div class="btn-row">
@@ -535,7 +535,7 @@ function logout() {
       .map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`)
       .join('');
 
-    if (saved && swClubs.some(c => c.id === saved)) {
+    if (saved && swClubs.some(c => String(c.id) === saved)) {
       elClubSel.value = saved;
     } else if (swClubs.length) {
       elClubSel.value = swClubs[0].id;
@@ -549,13 +549,12 @@ function logout() {
       elTariffs.innerHTML = '<span id="sw-empty">Select a club…</span>';
       return;
     }
-    localStorage.setItem('sw-club-id', clubId);
-
     const r = await fetch(`/api/admin/clubs/${encodeURIComponent(clubId)}/tariff-plans`);
     if (!r.ok) {
       elTariffs.innerHTML = `<span style="color:var(--danger)">Error ${r.status}</span>`;
       return;
     }
+    localStorage.setItem('sw-club-id', clubId);
     const data = await safeJson(r);
     if (!Array.isArray(data) || !data.length) {
       elTariffs.innerHTML = '<span id="sw-empty">No tariff plans</span>';
@@ -592,7 +591,7 @@ function logout() {
   elClubSel.addEventListener('change', loadTariffs);
 
   btnLogout.addEventListener('click', async () => {
-    try { await fetch('/api/account/logout', { method: 'POST' }); } catch (_) {}
+    try { await fetch('/api/account/logout', { method: 'POST' }); } catch (_) { /* ignore network errors on logout */ }
     location.href = '/login';
   });
 
